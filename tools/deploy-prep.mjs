@@ -7,7 +7,7 @@ const out = resolve(root, '_deploy');
 const URL = process.env.SITE_URL || 'https://familyvillage.vercel.app';
 rmSync(out, { recursive: true, force: true });
 mkdirSync(resolve(out, 'css'), { recursive: true }); mkdirSync(resolve(out, 'js'));
-for (const f of ['config.js', 'css/style.css', 'js/app.js', 'og.jpg']) cpSync(resolve(root, f), resolve(out, f));
+for (const f of ['config.js', 'css/style.css', 'js/app.js', 'og.jpg', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) cpSync(resolve(root, f), resolve(out, f));
 if (existsSync(resolve(root, 'photos'))) cpSync(resolve(root, 'photos'), resolve(out, 'photos'), { recursive: true });
 if (existsSync(resolve(root, 'music'))) cpSync(resolve(root, 'music'), resolve(out, 'music'), { recursive: true });
 if (existsSync(resolve(root, '.vercel'))) cpSync(resolve(root, '.vercel'), resolve(out, '.vercel'), { recursive: true });

@@ -1,4 +1,4 @@
-import { placeholderCanvas, buzz, photoURL, shortDate, dayKey, addDays, keyLabel, daysBetween } from './common.js';
+import { placeholderCanvas, buzz, photoURL, shortDate, dayKey, addDays, keyLabel, daysBetween, josa } from './common.js';
 import { list, add, refresh, remoteOn, status } from './store.js';
 import {
   members, member, memberName, memberColor, callName, me, meId, repliesFor, isLockedLetter, isForMe, markRead, isRead, unreadForMe, bestScores, villageName,
@@ -221,7 +221,7 @@ export function mailboxView(onSent, { onBack, to: presetTo = '', filter: presetF
   const meM = me(), guest = !meM;
   const others = members().filter(m => m.id !== meId());
   const html = `
-    <p class="muted" style="line-height:1.7">${guest ? '가족에게 안부 한마디 남겨 주세요 💌' : `<b>${esc(meM.role || meM.name)}</b>(이)가 가족에게 보내는 편지예요 💌`}</p>
+    <p class="muted" style="line-height:1.7">${guest ? '가족에게 안부 한마디 남겨 주세요 💌' : `<b>${esc(meM.role || meM.name)}</b>${esc(josa(meM.role || meM.name, '이/가').slice(String(meM.role || meM.name).length))} 가족에게 보내는 편지예요 💌`}</p>
     <form class="letter-form" autocomplete="off">
       ${guest ? '<input class="field l-name" maxlength="20" placeholder="이름" aria-label="이름" />' : ''}
       <div class="to-row" role="group" aria-label="받는 사람">
@@ -447,12 +447,16 @@ export async function share() {
 }
 
 /* ---------- ☰ 바로가기 메뉴 ---------- */
+const MENU_GROUPS = [['', '🌳 마을 곳곳'], ['me', '🙋 나'], ['set', '⚙️ 보기 · 설정']];
 export function menuView(items) {
+  const btn = (it, small) => `<button class="menu-item${small ? ' small' : ''}" data-i="${items.indexOf(it)}"><span class="e">${it.emoji}</span>${esc(it.label)}</button>`;
   const html = `
     <p class="muted">원하는 곳을 누르면 바로 볼 수 있어요</p>
-    <div class="menu-grid">
-      ${items.map((it, i) => `<button class="menu-item" data-i="${i}"><span class="e">${it.emoji}</span>${esc(it.label)}</button>`).join('')}
-    </div>`;
+    ${MENU_GROUPS.map(([g, title]) => {
+      const list = items.filter(it => (it.g || '') === g);
+      if (!list.length) return '';
+      return `<h4 class="menu-sec">${title}</h4><div class="menu-grid${g === 'set' ? ' small' : ''}">${list.map(it => btn(it, g === 'set')).join('')}</div>`;
+    }).join('')}`;
   const mount = root => { root.querySelectorAll('.menu-item').forEach(b => b.onclick = () => { buzz(8); items[+b.dataset.i].go(); }); };
   return { html, mount };
 }

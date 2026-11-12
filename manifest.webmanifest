@@ -1,0 +1,17 @@
+{
+  "name": "우리 가족 마을",
+  "short_name": "가족 마을",
+  "description": "숲속 우리 가족 마을 — 오늘의 질문, 하트, 가족 나무",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EAF6DF",
+  "theme_color": "#DDEFD0",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

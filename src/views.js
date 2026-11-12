@@ -1,5 +1,5 @@
 import * as UI from './ui.js';
-import { buzz, dayKey, addDays, keyLabel, daysBetween, shortDate, formatKDate } from './common.js';
+import { buzz, dayKey, addDays, keyLabel, daysBetween, shortDate, formatKDate, josa } from './common.js';
 import { list, add, refresh, lockInfo, savedCode, setFamilyCode } from './store.js';
 import {
   members, member, memberName, me, meId, isGuest, setMe, villageName, sinceDays, birthdaysOn, upcoming, monthEvents, ddayText,
@@ -327,7 +327,7 @@ export function waterTree() {
   setTimeout(() => {
     const after = treeInfo();
     fire('family:water', { grew: after.stage > before.stage, stage: after.stage });
-    if (after.stage > before.stage) { confetti(['🌱', '🌸', '✨', '🍎']); sound.sfx('tada'); toast(`🎉 ${after.name}가 '${after.stageName}'(으)로 자랐어요!`, 3600); }
+    if (after.stage > before.stage) { confetti(['🌱', '🌸', '✨', '🍎']); sound.sfx('tada'); toast(`🎉 ${josa(after.name, '이/가')} '${after.stageName}'${josa(after.stageName, '으로/로').slice(after.stageName.length)} 자랐어요!`, 3600); }
     else toast(after.next == null ? '💧 물을 줬어요. 열매가 주렁주렁해요 🍎' : `💧 물을 줬어요! ${after.toNext}번 더 주면 '${STAGE_NAMES[after.stage + 1]}'이 돼요`, 3000);
   }, 30);
   return true;
@@ -419,7 +419,7 @@ export function whoView(onPick) {
       setMe(b.dataset.id);
       onPick?.(b.dataset.id);
       closeModal();
-      toast(b.dataset.id === 'guest' ? '👀 손님으로 구경해요' : `🙋 ${callName(b.dataset.id)}(으)로 들어왔어요`);
+      toast(b.dataset.id === 'guest' ? '👀 손님으로 구경해요' : `🙋 ${josa(callName(b.dataset.id), '으로/로')} 들어왔어요`);
     });
   };
   return { html: `<p class="muted">이 휴대폰을 쓰는 사람을 골라 주세요. 편지·답·하트가 이 이름으로 남아요</p>${whoHTML()}`, mount };

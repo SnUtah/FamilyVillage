@@ -146,6 +146,7 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
     mb.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.85, 6), '#6E4B33', 0, 0.42, 0));
     mb.add(mesh(new THREE.BoxGeometry(0.3, 0.24, 0.42), '#E4605A', 0, 0.95, 0));
     const flagPivot = new THREE.Group();
+    flagPivot.userData.dynamic = true;   // 새 편지가 오면 올라가는 깃발
     flagPivot.position.set(0.17, 0.92, -0.1);
     const flag = mesh(new THREE.BoxGeometry(0.03, 0.24, 0.12), '#F7D58B', 0, 0.12, 0);
     flagPivot.add(flag);
@@ -156,6 +157,7 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
     let cake = null;
     if (birthdayIds.has(m.id)) {
       const b = balloons(-1.15, 1.9, 2.4);
+      b.userData.dynamic = true;
       g.add(b);
       updaters.push(t => b.userData.update(t));
       cake = new THREE.Group();
@@ -184,6 +186,7 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
 
     // 집 앞의 그 사람
     const npc = createCharacter({ type: 'family', ...m.look, shadows: false });
+    npc.root.userData.dynamic = true;
     npc.root.position.set(sp.npcX, 0, sp.z + (sp.side < 0 ? 0.55 : -0.55));
     npc.root.rotation.y = sp.side < 0 ? Math.PI / 2 : -Math.PI / 2;
     if (birthdayIds.has(m.id)) npc.setParty(true);
@@ -267,6 +270,11 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
   /* 다가오면 바라보고, 처음 다가올 땐 손 흔들고, 말풍선 */
   function update(dt, t, p, posing = false) {
     houses.forEach(h => {
+      if (h.badge) {   // 💗🎂💌 표시도 멀면 흐려지다 사라짐
+        const bd = Math.hypot(p.x - h.sp.x, p.z - h.sp.z);
+        h.badge.visible = !posing && bd < 30;
+        h.badge.material.opacity = clamp((30 - bd) / 8, 0, 1);
+      }
       if (h.isMe) return;
       const n = h.npc, dx = p.x - n.root.position.x, dz = p.z - n.root.position.z, d = Math.hypot(dx, dz);
       if (posing) { n.animate(dt, 0, t); if (h.bub) { h.bub.visible = false; h.bub = null; } return; }   // 가족사진 찍는 중
@@ -304,6 +312,7 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
 /* ---------- 🌱 함께 키우는 나무 ---------- */
 export function buildFamilyTree({ group, colliders, addInteract, updaters }) {
   const g = new THREE.Group();
+  g.userData.dynamic = true;   // 물을 주면 자라고 흔들림
   g.position.set(TREE.x, 0, TREE.z);
   group.add(g);
   // 흙 둔덕 + 낮은 울타리

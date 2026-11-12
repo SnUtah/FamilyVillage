@@ -2,7 +2,7 @@ import * as UI from './ui.js';
 import * as V from './views.js';
 import * as Game from './game.js';
 import { openTextView } from './textview.js';
-import { formatKDate, photoThemes, buzz, isDemoClock, dayKey } from './common.js';
+import { formatKDate, photoThemes, buzz, isDemoClock, dayKey, josa } from './common.js';
 import { refresh, add, isUnlocked, checkCode, loadLock, lockInfo } from './store.js';
 import { villageName, sinceDays, todayEvents, me, meId, setMe, isGuest, callName, unreadForMe, visitedOn } from './family.js';
 import { sound } from './sound.js';
@@ -72,7 +72,7 @@ function paintSteps() {
   if (unlocked && chosen) {
     const look = V.currentLook();
     $('#me-avatar').innerHTML = UI.avatarHTML(look, 'big');
-    $('#me-name').textContent = isGuest() ? '손님으로 구경해요' : `${callName(chosen)}(으)로 들어가요`;
+    $('#me-name').textContent = isGuest() ? '손님으로 구경해요' : `${josa(callName(chosen), '으로/로')} 들어가요`;
     $('#me-sub').textContent = isGuest() ? '편지는 쓸 수 있고, 질문·하트·물 주기는 가족만 해요' : '편지·답·하트가 이 이름으로 남아요';
   }
   const btn = $('#btn-enter');
@@ -240,15 +240,17 @@ async function boot() {
       : { emoji: '📚', label: '전체 앨범', go: () => UI.showAlbum(themes) },
     { emoji: '❓', label: '가족 퀴즈', go: UI.showQuiz },
     { emoji: '🗺️', label: '모이는 곳', go: UI.showDirections },
-    ...(me() ? [{ emoji: '🏠', label: '내 집', go: () => V.showMember(meId()) }] : []),
-    { emoji: '🎨', label: '캐릭터 꾸미기', go: V.showLook },
-    { emoji: SEASON_INFO[getSeason()].emoji, label: `계절: ${SEASON_INFO[getSeason()].label}`, go: () => { UI.closeModal(); const s = nextSeason(); UI.toast(`${SEASON_INFO[s].toast} · 메뉴에서 또 바꿀 수 있어요`, 3000); } },
-    { emoji: '🙋', label: '나는 누구?', go: () => V.showWho(onPick) },
-    { emoji: '🔒', label: '가족 암호', go: openLockSettings },
+    // 🙋 나
+    ...(me() ? [{ g: 'me', emoji: '🏠', label: '내 집', go: () => V.showMember(meId()) }] : []),
+    { g: 'me', emoji: '🎨', label: '캐릭터 꾸미기', go: V.showLook },
+    { g: 'me', emoji: '🙋', label: '나는 누구?', go: () => V.showWho(onPick) },
+    // ⚙️ 보기 · 설정
+    { g: 'set', emoji: SEASON_INFO[getSeason()].emoji, label: `계절: ${SEASON_INFO[getSeason()].label}`, go: () => { UI.closeModal(); const s = nextSeason(); UI.toast(`${SEASON_INFO[s].toast} · 메뉴에서 또 바꿀 수 있어요`, 3000); } },
     ...(game ? [
-      { emoji: '🚶', label: '자동 투어', go: () => { UI.closeModal(); game.startTour(); } },
-      { emoji: '🌙', label: '낮 · 밤 바꾸기', go: () => { UI.closeModal(); game.cycleTime(); } },
+      { g: 'set', emoji: '🌙', label: '낮 · 밤 바꾸기', go: () => { UI.closeModal(); game.cycleTime(); } },
+      { g: 'set', emoji: '🚶', label: '자동 투어', go: () => { UI.closeModal(); game.startTour(); } },
     ] : []),
+    { g: 'set', emoji: '🔒', label: '가족 암호', go: openLockSettings },
   ];
   $('#btn-menu').onclick = () => UI.showMenu(MENU());
   $('#btn-text-hud').onclick = () => openText();

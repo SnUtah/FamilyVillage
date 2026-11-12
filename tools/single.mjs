@@ -31,6 +31,7 @@ html = html
   .replace(/<link rel="stylesheet" href="css\/style.css" \/>/, () => `<style>\n${css}\n</style>`)
   .replace(/<script src="config.js"><\/script>/, () => `<script>\n${safeJS(config)}\n</script>`)
   .replace(/<!--[^>]*?원본은 src 폴더[^>]*?-->\s*/, '')
+  .replace(/<!-- 휴대폰 '홈 화면에 추가'[\s\S]*?<meta name="apple-mobile-web-app-title"[^>]*>\s*/, '')   // 한 파일엔 아이콘 파일이 없어요
   .replace(/<script src="js\/app.js"><\/script>/, () => `<script>\n/* three.js r160 (MIT, https://threejs.org) 포함 · 원본 코드는 src 폴더 */\n${safeJS(app)}\n</script>`)
   .replace(/<head>/, `<head>\n<!-- 한 파일 버전 (디자인·설정·프로그램·일러스트 사진 포함). 내용을 바꾸려면 아래 window.FAMILY 설정을 수정하세요. -->`)
 

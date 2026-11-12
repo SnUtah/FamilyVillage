@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { toon, mesh, textCanvas, canvasTex, labelSprite, rand, roundRect } from './util.js';
-import { throwSprite, flowerMat, bushMat } from './world.js';
+import { toon, mesh, textCanvas, canvasTex, labelSprite, rand, roundRect, clamp } from './util.js';
+const LABEL_FAR = 36;   // 이보다 먼 장소 이름표는 숨김
+import { throwSprite, flowerMat, bushMat, mergeStatic } from './world.js';
 import { buildHouses, buildFamilyTree } from './houses.js';
 import { keyLabel } from './common.js';
 import { villageName, sinceDays, visitorsOn, upcoming, ddayText, questionOn, answersOn, memberColor } from './family.js';
@@ -152,6 +153,7 @@ export function buildProps(scene) {
     const letters = [];
     for (let i = 0; i < 3; i++) {
       const l = mesh(new THREE.BoxGeometry(0.4, 0.28, 0.02), i === 1 ? '#FFF3EA' : '#FFFFFF', 0, 2.4, 0);
+      l.userData.dynamic = true;   // 우체통 위로 날아오르는 편지
       g.add(l);
       letters.push({ l, off: i * 2.1 });
     }
@@ -171,6 +173,7 @@ export function buildProps(scene) {
 
   /* ---------- 🌷 가족 정원: 편지 한 통 = 꽃 한 송이 (보낸 사람 색) ---------- */
   const bed = new THREE.Group();
+  bed.userData.dynamic = true;   // 편지가 오면 꽃이 더 심어짐
   group.add(bed);
   const flowers = [];
   {
@@ -244,6 +247,7 @@ export function buildProps(scene) {
     g.add(mesh(new THREE.BoxGeometry(1.3, 0.08, 1.05), '#E07B39', 0, 1.78, 0));
     g.add(mesh(new THREE.BoxGeometry(0.6, 0.04, 0.12), '#4A3B38', 0, 1.83, 0));
     const paper = mesh(new THREE.BoxGeometry(0.42, 0.3, 0.02), '#F7D58B', 0, 2.0, 0);
+    paper.userData.dynamic = true;
     g.add(paper);
     const sign = facePlane(textCanvas('투표함', { w: 256, h: 110, size: 54, bg: '#E07B39', radius: 20, color: '#FFFFFF' }), 0.8, 0.34);
     sign.position.set(0, 1.3, 0.51);
@@ -334,7 +338,7 @@ export function buildProps(scene) {
     // 불꽃 (빛 계산 없이 색만 밝게) + 은은한 빛무리
     const flames = [['#FF7A1A', 0.42, 1.05], ['#FFB23A', 0.3, 0.85], ['#FFE58A', 0.17, 0.6]].map(([col, r, h], k) => {
       const f = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.92 }));
-      f.position.y = 0.4 + h / 2; f.userData = { h, k };
+      f.position.y = 0.4 + h / 2; f.userData = { h, k, dynamic: true };
       g.add(f);
       return f;
     });
@@ -472,10 +476,16 @@ export function buildProps(scene) {
 
   function update(dt, t, playerPos, posing = false) {
     updaters.forEach(u => u(t, dt));
-    // 사진 찍는 동안엔 이름표를 숨겨서 사진이 깔끔하게
-    interactables.forEach(it => { it.label.visible = !posing; it.label.position.y = it.baseY + Math.sin(t * 2 + it.off) * 0.12; });
+    // 사진 찍는 동안엔 이름표를 숨겨서 사진이 깔끔하게 · 먼 이름표는 흐려지다 사라짐 (멀리서 봐도 화면이 덜 복잡하게)
+    interactables.forEach(it => {
+      const d = playerPos ? Math.hypot(playerPos.x - it.pos.x, playerPos.z - it.pos.z) : 0;
+      it.label.visible = !posing && d < LABEL_FAR;
+      it.label.material.opacity = clamp((LABEL_FAR - d) / 9, 0, 1);
+      it.label.position.y = it.baseY + Math.sin(t * 2 + it.off) * 0.12;
+    });
     if (playerPos) houses.update(dt, t, playerPos, posing);
   }
+  mergeStatic(group);   // 움직이지 않는 소품을 재질별로 합쳐 그리기 명령을 줄임
   return { group, colliders, boxes, interactables, update, refresh, plantFlower, flowerCount: () => flowers.length, campfire, bed: BED, houses, familyTree };
 }
 
@@ -557,6 +567,7 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
     }
   }
   group.add(g);
+  heart.userData.dynamic = glow.userData.dynamic = true;
   updaters.push(t => { heart.position.y = 7.5 + Math.sin(t * 2) * 0.06; glow.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; });
   boxes.push({ minX: 12.3, maxX: 27.7, minZ: -22.2, maxZ: -9.0 });
 }

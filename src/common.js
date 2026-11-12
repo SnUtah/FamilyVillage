@@ -90,6 +90,15 @@ export function shortDate(iso) {
 }
 
 /* 짧은 진동 (안드로이드에서만 동작, 아이폰은 조용히 무시) */
+/* 받침에 맞는 조사: josa('첫째', '으로/로') → '첫째로', josa('동생', '이/가') → '동생이' (한글이 아니면 '(으)로'처럼) */
+export function josa(word, pair) {
+  const w = String(word ?? ''), c = w.charCodeAt(w.length - 1), [a, b] = pair.split('/');
+  if (!(c >= 0xAC00 && c <= 0xD7A3)) return `${w}(${a.slice(0, a.length - b.length) || a})${b}`;
+  const jong = (c - 0xAC00) % 28;
+  if (a === '으로' && jong === 8) return w + b;   // ㄹ 받침은 '로' (예: 딸로)
+  return w + (jong ? a : b);
+}
+
 export function buzz(ms = 10) {
   try { navigator.vibrate?.(ms); } catch {}
 }

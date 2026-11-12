@@ -110,6 +110,7 @@ export function seasonMat(cols) {
 }
 export function onlyIn(obj, ...seasons) {
   seasonal.push({ obj, seasons });
+  obj.userData.seasons = seasons;   // 합치기(mergeStatic·bake)할 때도 계절 전용으로 남도록
   obj.visible = seasons.includes(getSeason());
   return obj;
 }
@@ -129,6 +130,89 @@ const HILL = matSet([0, 1, 2, 3].map(i => ({ green: ['#9CCB84', '#AED596', '#8FB
 const FLOWER = matSet([0, 1, 2, 3].map(i => ({ green: ['#F4B8C0', '#FFFFFF', '#F7D58B', '#B9A4E8'][i], autumn: ['#D9553B', '#F2C14E', '#E8763E', '#B9773E'][i], winter: ['#FFFFFF', '#C94F4F', '#E3EAF2', '#9DB7D5'][i] })));
 export const bushMat = i => BUSH[i % 3];
 export const flowerMat = i => FLOWER[i % 4];
+
+/* ---------- ⚡ 굽기(bake): 같은 모양·재질의 조각들을 InstancedMesh 하나로 합쳐 한 번에 그림 ----------
+   나무 91그루(조각 500여 개)처럼 움직이지 않는 물체를 휴대폰에서 가볍게 그리기 위해.
+   계절 전용 조각(userData.seasons)은 그 계절에만 보이는 묶음이 돼요. */
+export function bake(parent, groups, { shadows = true } = {}) {
+  const buckets = new Map();
+  groups.forEach(g => {
+    g.updateMatrixWorld(true);
+    g.traverse(o => {
+      if (!o.isMesh) return;
+      let seasons = null;
+      for (let q = o; q; q = q.parent) if (q.userData.seasons) { seasons = q.userData.seasons; break; }
+      const key = `${o.geometry.uuid}|${o.material.uuid}|${seasons || ''}`;
+      let bk = buckets.get(key);
+      if (!bk) buckets.set(key, bk = { geo: o.geometry, mat: o.material, seasons, list: [] });
+      bk.list.push(o.matrixWorld.clone());
+    });
+  });
+  buckets.forEach(bk => {
+    const im = new THREE.InstancedMesh(bk.geo, bk.mat, bk.list.length);
+    bk.list.forEach((m, i) => im.setMatrixAt(i, m));
+    im.castShadow = shadows && !bk.mat.isMeshBasicMaterial; im.receiveShadow = !bk.mat.isMeshBasicMaterial;
+    im.computeBoundingSphere();
+    parent.add(bk.seasons ? onlyIn(im, ...bk.seasons) : im);
+  });
+  return buckets.size;
+}
+
+/* ---------- ⚡ 합치기(mergeStatic): 움직이지 않는 조각을 재질별로 모양 하나로 합쳐 그리기 명령을 줄임 ----------
+   사진관 외관·통나무집·모닥불 돌·입구 아치처럼 서로 다른 모양이 많은 소품용. (같은 모양 반복은 bake)
+   움직이거나 바뀌는 것은 userData.dynamic = true 로 표시해 두면 건드리지 않아요. */
+const _v = new THREE.Vector3(), _n = new THREE.Vector3(), _nm = new THREE.Matrix3();
+export function mergeStatic(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const buckets = new Map();
+  root.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material)) return;
+    for (let q = o; q && q !== root; q = q.parent) if (q.userData.dynamic) return;
+    const g = o.geometry, a = g.attributes;
+    if (!a.position || !a.normal || !a.uv || g.morphAttributes?.position) return;
+    let seasons = null;
+    for (let q = o; q && q !== root; q = q.parent) if (q.userData.seasons) { seasons = q.userData.seasons; break; }
+    const key = `${o.material.uuid}|${seasons || ''}`;
+    let bk = buckets.get(key);
+    if (!bk) buckets.set(key, bk = { mat: o.material, seasons, items: [], cast: false, verts: 0, idx: 0 });
+    bk.items.push({ o, g, m: new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld) });
+    bk.cast = bk.cast || o.castShadow;
+    bk.verts += a.position.count;
+    bk.idx += g.index ? g.index.count : a.position.count;
+  });
+  let saved = 0;
+  buckets.forEach(bk => {
+    if (bk.items.length < 2) return;   // 혼자인 재질은 그대로 둠
+    const pos = new Float32Array(bk.verts * 3), nor = new Float32Array(bk.verts * 3), uv = new Float32Array(bk.verts * 2);
+    const index = new (bk.verts > 65535 ? Uint32Array : Uint16Array)(bk.idx);
+    let vo = 0, io = 0;
+    bk.items.forEach(({ o, g, m }) => {
+      const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv;
+      _nm.getNormalMatrix(m);
+      for (let i = 0; i < P.count; i++) {
+        _v.fromBufferAttribute(P, i).applyMatrix4(m).toArray(pos, (vo + i) * 3);
+        _n.fromBufferAttribute(N, i).applyMatrix3(_nm).normalize().toArray(nor, (vo + i) * 3);
+        uv[(vo + i) * 2] = U.getX(i); uv[(vo + i) * 2 + 1] = U.getY(i);
+      }
+      if (g.index) for (let i = 0; i < g.index.count; i++) index[io++] = g.index.getX(i) + vo;
+      else for (let i = 0; i < P.count; i++) index[io++] = i + vo;
+      vo += P.count;
+      o.parent.remove(o);
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setIndex(new THREE.BufferAttribute(index, 1));
+    geo.computeBoundingSphere();
+    const merged = new THREE.Mesh(geo, bk.mat);
+    merged.castShadow = bk.cast; merged.receiveShadow = true;
+    root.add(bk.seasons ? onlyIn(merged, ...bk.seasons) : merged);
+    saved += bk.items.length - 1;
+  });
+  return saved;
+}
 
 /* ---------- 풀밭 텍스처 (계절마다 하나씩, 처음 쓸 때 만듦) ---------- */
 const groundTex = {};
@@ -199,7 +283,8 @@ export function tree(x, z, { kind = 'maple', s = 1 } = {}) {
       const fruits = new THREE.Group();
       [[0.9, 2.5, 0.9], [-0.5, 2.0, 1.0], [0.3, 3.0, 1.15], [-1.2, 2.6, 0.4], [1.3, 2.0, -0.2], [0.1, 1.9, 1.25], [-0.6, 3.4, 0.7]]
         .forEach(([fx, fy, fz]) => fruits.add(mesh(fruitGeo, '#F28C28', fx, fy, fz)));
-      g.add(onlyIn(fruits, 'autumn'));
+      fruits.userData.seasons = ['autumn'];
+      g.add(fruits);
     }
   }
   g.position.set(x, 0, z);
@@ -220,20 +305,25 @@ export function bush(x, z, s = 1, i = 0) {
   return g;
 }
 
+const LAMP = {
+  post: new THREE.CylinderGeometry(0.09, 0.13, 2.8, 8), base: new THREE.CylinderGeometry(0.24, 0.24, 0.12, 8),
+  glass: new THREE.CylinderGeometry(0.2, 0.2, 0.42, 6), cap: new THREE.ConeGeometry(0.34, 0.28, 6),
+  glassMat: new THREE.MeshBasicMaterial({ color: '#FFD27A' }),
+};
 export function lamp(x, z) {
   const g = new THREE.Group();
-  g.add(mesh(new THREE.CylinderGeometry(0.09, 0.13, 2.8, 8), '#5E4433', 0, 1.4, 0));
-  g.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.12, 8), '#5E4433', 0, 0.06, 0));
-  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.42, 6), new THREE.MeshBasicMaterial({ color: '#FFD27A' }));   // 육각 초롱
+  g.add(mesh(LAMP.post, '#5E4433', 0, 1.4, 0));
+  g.add(mesh(LAMP.base, '#5E4433', 0, 0.06, 0));
+  const glass = new THREE.Mesh(LAMP.glass, LAMP.glassMat);   // 육각 초롱
   glass.position.y = 3.0;
   g.add(glass);
-  g.add(mesh(new THREE.ConeGeometry(0.34, 0.28, 6), '#5E4433', 0, 3.34, 0));
+  g.add(mesh(LAMP.cap, '#5E4433', 0, 3.34, 0));
   g.position.set(x, 0, z);
   return g;
 }
 
 /* 밤에 켜지는 가로등 불빛 (조명 계산 없이 스프라이트 + 바닥 빛 웅덩이) */
-let glowTex;
+let glowTex, poolMat;
 function lampGlow(x, z) {
   if (!glowTex) {
     const c = document.createElement('canvas');
@@ -248,7 +338,8 @@ function lampGlow(x, z) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 }));
   sp.position.set(0, 3.0, 0);
   sp.scale.set(3.6, 3.6, 1);
-  const pool = new THREE.Mesh(new THREE.CircleGeometry(2.6, 24), new THREE.MeshBasicMaterial({ color: '#FFE4A8', transparent: true, opacity: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  poolMat = poolMat || { geo: new THREE.CircleGeometry(2.6, 24), mat: new THREE.MeshBasicMaterial({ color: '#FFE4A8', transparent: true, opacity: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }) };
+  const pool = new THREE.Mesh(poolMat.geo, poolMat.mat);
   pool.rotation.x = -Math.PI / 2;
   pool.position.y = 0.04;
   g.add(sp, pool);
@@ -256,17 +347,15 @@ function lampGlow(x, z) {
   return g;
 }
 
+const BENCH = { seat: new THREE.BoxGeometry(1.8, 0.08, 0.16), back: new THREE.BoxGeometry(1.8, 0.14, 0.06), leg: new THREE.BoxGeometry(0.08, 0.5, 0.5), arm: new THREE.BoxGeometry(0.08, 0.6, 0.06) };
 export function bench(x, z, rotY = 0) {
   const g = new THREE.Group();
   const wood = '#B07A4F';
-  for (let i = 0; i < 3; i++) g.add(mesh(new THREE.BoxGeometry(1.8, 0.08, 0.16), wood, 0, 0.5, -0.2 + i * 0.2));
-  for (let i = 0; i < 2; i++) {
-    const b = mesh(new THREE.BoxGeometry(1.8, 0.14, 0.06), wood, 0, 0.75 + i * 0.2, -0.32);
-    g.add(b);
-  }
+  for (let i = 0; i < 3; i++) g.add(mesh(BENCH.seat, wood, 0, 0.5, -0.2 + i * 0.2));
+  for (let i = 0; i < 2; i++) g.add(mesh(BENCH.back, wood, 0, 0.75 + i * 0.2, -0.32));
   for (const sx of [-0.75, 0.75]) {
-    g.add(mesh(new THREE.BoxGeometry(0.08, 0.5, 0.5), '#6E4B33', sx, 0.25, 0));
-    g.add(mesh(new THREE.BoxGeometry(0.08, 0.6, 0.06), '#6E4B33', sx, 0.8, -0.32));
+    g.add(mesh(BENCH.leg, '#6E4B33', sx, 0.25, 0));
+    g.add(mesh(BENCH.arm, '#6E4B33', sx, 0.8, -0.32));
   }
   g.position.set(x, 0, z);
   g.rotation.y = rotY;
@@ -344,6 +433,7 @@ export function christmasTree(x, z, s = 1) {
   });
   const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), new THREE.MeshBasicMaterial({ color: '#FFD34D' }));
   star.position.y = 4.5; star.scale.set(1, 1.25, 0.45);
+  star.userData.dynamic = true;   // 빙글빙글 도는 별
   g.add(star);
   g.position.set(x, 0, z);
   g.scale.setScalar(s);
@@ -446,6 +536,7 @@ function makeClouds(scene) {
     group.add(g);
     clouds.push({ g, speed: rand(0.4, 1.0) });
   }
+  group.userData.dynamic = true;   // 흘러가는 구름
   const update = (dt) => { if (!group.visible) return; clouds.forEach(c => { c.g.position.x += c.speed * dt; if (c.g.position.x > 170) c.g.position.x = -170; }); };
   return { group, update };
 }
@@ -524,6 +615,7 @@ function makePetals(scene) {
 /* ---------- 날아다니는 것: 🦋 나비 (봄·여름) · 고추잠자리 (가을) · 겨울엔 없음 ---------- */
 function makeFlyers(scene) {
   const butterflies = new THREE.Group(), dragonflies = new THREE.Group();
+  butterflies.userData.dynamic = dragonflies.userData.dynamic = true;
   scene.add(butterflies, dragonflies);
   const list = [];
   const count = reduceMotion ? 0 : 8;
@@ -678,18 +770,19 @@ export function buildEnvironment(scene, avoid) {
   ring.position.set(PLAZA.x, 0.03, PLAZA.z);
   group.add(ring);
 
-  // 가장자리 숲 (경계)
+  // 가장자리 숲 (경계) — 바깥 나무는 그림자 없이, 전부 한꺼번에 굽기
   const colliders = [];
+  const outer = [], inner = [], props = [];
   for (let i = 0; i < 46; i++) {
     const a = (i / 46) * Math.PI * 2 + rand(-0.04, 0.04);
     const r = rand(41, 46);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (Math.abs(x) < 4 && z > 30) continue; // 입구
-    group.add(tree(x, z, { kind: ['pine', 'maple', 'pine', 'ginkgo', 'pine', 'persimmon'][i % 6], s: rand(1.1, 1.6) }));
+    outer.push(tree(x, z, { kind: ['pine', 'maple', 'pine', 'ginkgo', 'pine', 'persimmon'][i % 6], s: rand(1.1, 1.6) }));
   }
   for (let i = 0; i < 30; i++) {
     const a = Math.random() * Math.PI * 2, r = rand(50, 75);
-    group.add(tree(Math.cos(a) * r, Math.sin(a) * r, { kind: ['pine', 'pine', 'maple', 'ginkgo'][i % 4], s: rand(1.4, 2.2) }));
+    outer.push(tree(Math.cos(a) * r, Math.sin(a) * r, { kind: ['pine', 'pine', 'maple', 'ginkgo'][i % 4], s: rand(1.4, 2.2) }));
   }
   // 입구 너머 언덕
   for (let i = 0; i < 8; i++) {
@@ -705,32 +798,39 @@ export function buildEnvironment(scene, avoid) {
     [-15, 12, 'maple'], [16, 14, 'persimmon'], [-22, -2, 'ginkgo'], [11, -22, 'persimmon'], [-12, -24, 'maple'],
   ];
   innerTrees.forEach(([x, z, k]) => {
-    group.add(tree(x, z, { kind: k, s: rand(1, 1.3) }));
+    inner.push(tree(x, z, { kind: k, s: rand(1, 1.3) }));
     colliders.push({ x, z, r: 0.7 });
   });
 
   // 덤불
   [[-5, 28], [12.5, 27.5], [-14, 8], [13, 3], [-3, -21], [3, -21], [-26, 12], [26, 10], [-20, -18], [28, -8]].forEach(([x, z], i) => {
-    group.add(bush(x, z, rand(0.9, 1.3), i));
+    inner.push(bush(x, z, rand(0.9, 1.3), i));
     colliders.push({ x, z, r: 0.9 });
   });
 
   // 가로등 (+ 밤 불빛)
   const night = new THREE.Group();
   night.visible = false;
+  night.userData.dynamic = true;   // 밤에만 켜짐
   group.add(night);
   [[-2.3, 30], [2.3, 24], [-2.3, 18], [2.3, 12], [7.5, -1], [14, -3.5], [-8.6, 5.5], [-12, -5], [-8, 9], [8, 12]].forEach(([x, z]) => {
-    group.add(lamp(x, z));
+    props.push(lamp(x, z));
     night.add(lampGlow(x, z));
     colliders.push({ x, z, r: 0.3 });
   });
 
   // 벤치
   [[-6.3, 8.8, 2.4], [6.3, 8.8, -2.4], [-6.8, -0.5, 1.2], [6.8, -1.0, -1.2]].forEach(([x, z, r]) => {
-    const b = bench(x, z, r);
-    group.add(b);
+    props.push(bench(x, z, r));
     colliders.push({ x, z, r: 0.9 });
   });
+  bake(group, outer, { shadows: false });
+  bake(group, inner, { shadows: true });
+  bake(group, props, { shadows: true });
+  // 밤 불빛 웅덩이도 한 번에 (불빛 스프라이트는 그대로)
+  const pools = [];
+  night.children.forEach(lg => { const pool = lg.children.find(c => c.isMesh); if (pool) { lg.remove(pool); const h = new THREE.Group(); h.position.copy(lg.position); h.add(pool); pools.push(h); } });
+  bake(night, pools, { shadows: false });
 
   // 입구의 허수아비(봄~가을), 겨울엔 광장 옆 크리스마스 트리 · 낙엽 더미(가을) / 눈 무더기(겨울)
   const updaters = [];
@@ -794,6 +894,7 @@ export function buildEnvironment(scene, avoid) {
       updaters.forEach(u => u(t));
     },
   };
+  mergeStatic(group);   // 길·언덕·허수아비·낙엽 더미·크리스마스 트리 장식 등을 재질별로 합침
   env.setSeason(season);
   return env;
 }
