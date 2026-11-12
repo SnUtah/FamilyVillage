@@ -3,7 +3,7 @@ import * as V from './views.js';
 import * as Game from './game.js';
 import { openTextView } from './textview.js';
 import { formatKDate, photoThemes, buzz, isDemoClock, dayKey } from './common.js';
-import { refresh, add, lockRequired, isUnlocked, checkCode, remoteOn } from './store.js';
+import { refresh, add, isUnlocked, checkCode, loadLock, lockInfo } from './store.js';
 import { villageName, sinceDays, todayEvents, me, meId, setMe, isGuest, callName, unreadForMe, visitedOn } from './family.js';
 import { sound } from './sound.js';
 import { getSeason, nextSeason, SEASON_INFO } from './season.js';
@@ -51,14 +51,18 @@ if (evs.length) {
 if (isDemoClock()) $('#demo-badge').hidden = false;
 UI.initUI();
 
-/* 시트가 연결돼 있고 암호를 이미 알면 들어오자마자 소식 받아 두기 */
-if (isUnlocked()) refresh();
+let game = null, started = false, lockReady = false;
 
-let game = null, started = false;
-
-/* ---------- 🔒 → 🙋 → 입장 ---------- */
+/* ---------- (🔒 암호가 걸려 있으면) → 🙋 → 입장 ---------- */
 function paintSteps() {
+  if (!lockReady) {   // 암호가 걸려 있는지 확인 중 (시트 연결 시 잠깐)
+    $('#lock').hidden = $('#who').hidden = $('#me-line').hidden = true;
+    if (ready) { $('#btn-enter').disabled = true; $('#btn-enter').textContent = '가족 마을 확인 중…'; }
+    return;
+  }
   const unlocked = isUnlocked(), chosen = meId();
+  const hint = lockInfo().hint;
+  $('#lock-hint').textContent = hint ? `힌트: ${hint}` : '';
   $('#lock').hidden = unlocked;
   $('#who').hidden = !unlocked || !!chosen;
   $('#me-line').hidden = !unlocked || !chosen;
@@ -88,8 +92,6 @@ addEventListener('family:me', () => {
   paintSteps();
 });
 $('#btn-change').onclick = () => { $('#who-grid').innerHTML = V.whoHTML(meId()); bindWho(); $('#who').hidden = false; $('#me-line').hidden = true; };
-const lockHint = W.lock?.hint ? `힌트: ${W.lock.hint}` : '';
-$('#lock-hint').textContent = remoteOn() ? lockHint : [lockHint, W.lock?.demoCode ? `(미리보기 암호 ${W.lock.demoCode})` : ''].filter(Boolean).join(' ');
 $('#lock').onsubmit = async e => {
   e.preventDefault();
   const inp = $('#lock-in'), btn = $('#lock-btn');
@@ -103,8 +105,12 @@ $('#lock').onsubmit = async e => {
   UI.toast(r.error === 'network' ? '연결이 안 돼요. 잠시 뒤 다시 해 주세요' : '암호가 달라요 🔒');
 };
 addEventListener('family:locked', () => { UI.toast('가족 암호가 바뀌었어요. 다시 들어와 주세요', 4000); if (!started) paintSteps(); });
-if (!lockRequired()) $('#lock').hidden = true;
+/* ⚙️ 가족 암호 설정 (걸기 · 바꾸기 · 없애기) */
+const openLockSettings = () => V.showLockSettings(() => { paintSteps(); if (isUnlocked()) refresh({ force: true }); });
+$('#btn-lock-set').onclick = openLockSettings;
 paintSteps();
+/* 암호가 걸려 있는지 확인한 뒤 시작 단계를 그림. 들어갈 수 있으면 소식도 미리 받아 둠 */
+loadLock().then(() => { lockReady = true; paintSteps(); if (isUnlocked()) refresh(); });
 setLoad(10);
 
 /* ---------- PC 소개 패널: 둘러본 곳 체크, 넓게 보기 ---------- */
@@ -238,6 +244,7 @@ async function boot() {
     { emoji: '🎨', label: '캐릭터 꾸미기', go: V.showLook },
     { emoji: SEASON_INFO[getSeason()].emoji, label: `계절: ${SEASON_INFO[getSeason()].label}`, go: () => { UI.closeModal(); const s = nextSeason(); UI.toast(`${SEASON_INFO[s].toast} · 메뉴에서 또 바꿀 수 있어요`, 3000); } },
     { emoji: '🙋', label: '나는 누구?', go: () => V.showWho(onPick) },
+    { emoji: '🔒', label: '가족 암호', go: openLockSettings },
     ...(game ? [
       { emoji: '🚶', label: '자동 투어', go: () => { UI.closeModal(); game.startTour(); } },
       { emoji: '🌙', label: '낮 · 밤 바꾸기', go: () => { UI.closeModal(); game.cycleTime(); } },

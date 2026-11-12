@@ -1,6 +1,6 @@
 import * as UI from './ui.js';
 import { buzz, dayKey, addDays, keyLabel, daysBetween, shortDate, formatKDate } from './common.js';
-import { list, add, refresh } from './store.js';
+import { list, add, refresh, lockInfo, savedCode, setFamilyCode } from './store.js';
 import {
   members, member, memberName, me, meId, isGuest, setMe, villageName, sinceDays, birthdaysOn, upcoming, monthEvents, ddayText,
   questionOn, answersOn, myAnswer, recentQuestions, heartsTo, heartsToday, sentHeartToday, visitorsOn, myStamps, treeInfo, STAGE_NAMES,
@@ -425,6 +425,53 @@ export function whoView(onPick) {
   return { html: `<p class="muted">이 휴대폰을 쓰는 사람을 골라 주세요. 편지·답·하트가 이 이름으로 남아요</p>${whoHTML()}`, mount };
 }
 export function showWho(onPick) { openView('🙋 나는 누구예요?', whoView(onPick)); }
+
+/* ---------- 🔒 가족 암호 설정 (선택: 안 걸면 누구나 바로 들어와요) ---------- */
+export function lockSettingsView(onChange) {
+  const mount = root => {
+    const box = root.querySelector('.lockset');
+    const render = () => {
+      const L = lockInfo(), knows = L.locked && !!savedCode();
+      box.innerHTML = `
+        <div class="card center">
+          <div style="font-size:40px">${L.locked ? '🔒' : '🔓'}</div>
+          <b>${L.locked ? '가족 암호가 걸려 있어요' : '지금은 암호 없이 누구나 들어와요'}</b>
+          <p class="muted" style="margin:6px 0 0">${L.remote
+            ? '암호는 구글 시트에 저장돼서 가족 모두에게 똑같이 적용돼요.'
+            : '⚠️ 구글 시트를 연결하지 않아서 <b>이 휴대폰에서만</b> 잠겨요. 가족 모두에게 걸려면 시트를 연결하세요 (tools/가족_시트_연결.md).'}</p>
+        </div>
+        <form class="ls-form" autocomplete="off">
+          ${L.locked && !knows ? '<input class="field ls-cur" type="password" maxlength="30" placeholder="지금 암호" aria-label="지금 암호">' : ''}
+          <input class="field ls-new" type="password" maxlength="30" placeholder="${L.locked ? '새 암호' : '정할 암호 (숫자·글자)'}" aria-label="새 암호">
+          <input class="field ls-new2" type="password" maxlength="30" placeholder="한 번 더" aria-label="새 암호 확인">
+          <input class="field ls-hint" maxlength="40" placeholder="힌트 (선택, 예: 우리 집 현관 비밀번호 앞 네 자리)" aria-label="힌트" value="${esc(L.hint || '')}">
+          <button class="btn pink" type="submit" style="width:100%;margin-top:10px">${L.locked ? '🔒 암호 바꾸기' : '🔒 암호 걸기'}</button>
+        </form>
+        ${L.locked ? '<button class="btn ls-off" type="button" style="width:100%;margin-top:8px">🔓 암호 없애기 (누구나 들어오게)</button>' : ''}
+        <p class="muted center" style="font-size:12.5px">암호는 단톡방 링크와 같은 메시지에 쓰지 말고 따로 알려 주세요</p>`;
+      const cur = () => box.querySelector('.ls-cur')?.value.trim() || '';
+      const save = async (next, hint) => {
+        const r = await setFamilyCode({ current: cur(), next, hint });
+        if (!r.ok) { toast(r.error === 'code' ? '지금 암호가 달라요 🔒' : '연결이 안 돼요. 잠시 뒤 다시 해 주세요'); return; }
+        toast(next ? '🔒 가족 암호를 걸었어요' : '🔓 이제 암호 없이 누구나 들어와요', 2800);
+        buzz(15); sound.sfx('chime');
+        onChange?.();
+        closeModal();
+      };
+      box.querySelector('.ls-form').onsubmit = e => {
+        e.preventDefault();
+        const a = box.querySelector('.ls-new').value.trim(), b = box.querySelector('.ls-new2').value.trim();
+        if (!a) { toast('정할 암호를 적어 주세요'); return; }
+        if (a !== b) { toast('두 번 적은 암호가 달라요'); return; }
+        save(a, box.querySelector('.ls-hint').value);
+      };
+      box.querySelector('.ls-off')?.addEventListener('click', () => save('', ''));
+    };
+    render();
+  };
+  return { html: '<div class="lockset"></div>', mount };
+}
+export function showLockSettings(onChange) { openView('🔒 가족 암호', lockSettingsView(onChange)); }
 
 /* ---------- 📸 가족 포토존: 같이 찍을 사람 고르기 ---------- */
 export function photoPickView() {

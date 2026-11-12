@@ -4,15 +4,18 @@
    구글 시트에 붙여서 '웹 앱'으로 배포하면, 마을에서 남긴 편지·질문 답·하트·물 주기·투표가
    이 시트에 모이고 가족 모두가 같은 소식을 봅니다. 설치 순서는 tools/가족_시트_연결.md (10분, 무료)
 
-   - 🔒 가족 암호(FAMILY_CODE)를 맞힌 요청만 읽고 쓸 수 있어요. 암호는 여기에만 적고 사이트 파일에는 적지 마세요
+   - 🔒 가족 암호는 선택이에요. 처음엔 암호 없이 누구나 들어오고, 마을의 ⚙️(가족 암호)에서 걸면
+     이 스크립트의 '스크립트 속성'에 저장돼 가족 모두에게 적용돼요. 걸린 뒤엔 맞는 암호만 읽고 쓸 수 있어요
+   - GET  ?action=status&site=…         → 암호가 걸려 있는지 + 힌트 (암호 없이도 알려줌)
    - GET  ?action=check&code=…&site=…   → 암호 확인
    - GET  ?action=all&code=…&site=…     → 모든 소식 (종류별 최근 것)
    - POST {kind, code, id, …}            → 한 줄 추가 (같은 id는 한 번만, 투표·모습·답은 고쳐 쓰기)
+   - POST {kind:'setcode', code, newCode, hint} → 암호 걸기·바꾸기·없애기 (걸려 있으면 지금 암호가 맞아야 함)
    - 탭 이름 = '사이트·종류' (예: kimfamily·편지). 없으면 자동으로 만들어요
    - 시트에서 행을 지우면 마을에서도 사라져요 (부적절한 글 지우기)
    - 타임캡슐 편지는 열리는 날 전까지 내용이 내려가지 않아요
    ========================================================= */
-var FAMILY_CODE = '1234';   // ← 가족 암호로 꼭 바꾸세요 (숫자·글자 모두 가능)
+var START_CODE = '';   // (선택) 처음부터 걸어 둘 암호. 비워 두고 마을의 ⚙️에서 정하는 걸 추천해요
 
 var KINDS = {
   letters: { tab: '편지', cols: ['time', 'id', 'who', 'name', 'to', 'message', 'openAt'], head: ['시간', 'id', '보낸 사람', '이름', '받는 사람', '편지', '열리는 날'], max: 400 },
@@ -31,7 +34,10 @@ var NUM = { q: 1, choice: 1, score: 1, total: 1 };
 
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function today_() { return Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd'); }
-function okCode_(code) { return String(code || '') !== '' && String(code) === String(FAMILY_CODE); }
+var PROPS = PropertiesService.getScriptProperties();
+function code_() { var c = PROPS.getProperty('FAMILY_CODE'); return c === null ? String(START_CODE || '') : c; }
+function hint_() { return PROPS.getProperty('FAMILY_HINT') || ''; }
+function okCode_(code) { var cur = code_(); return !cur || String(code || '') === cur; }   // 암호를 안 걸었으면 누구나
 function tabName_(site, kind) {
   var s = String(site || 'main').replace(/[^\w가-힣-]/g, '').slice(0, 40) || 'main';
   return s + '·' + KINDS[kind].tab;
@@ -60,6 +66,7 @@ function cell_(col, v) {
 /* 읽기 */
 function doGet(e) {
   var p = (e && e.parameter) || {};
+  if (p.action === 'status') return json_({ ok: true, locked: !!code_(), hint: hint_() });
   if (!okCode_(p.code)) return json_({ ok: false, error: 'code' });
   if (p.action === 'check') return json_({ ok: true });
   var data = {}, day = today_();
@@ -87,6 +94,12 @@ function doPost(e) {
   try { b = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { return json_({ ok: false, error: 'bad json' }); }
   if (!okCode_(b.code)) return json_({ ok: false, error: 'code' });
   var kind = String(b.kind || '');
+  if (kind === 'setcode') {   // 🔒 암호 걸기·바꾸기 (newCode가 비면 없애기)
+    var next = String(b.newCode || '').trim().slice(0, 30);
+    PROPS.setProperty('FAMILY_CODE', next);
+    PROPS.setProperty('FAMILY_HINT', next ? String(b.hint || '').trim().slice(0, 40) : '');
+    return json_({ ok: true, locked: !!next });
+  }
   var k = KINDS[kind];
   if (!k) return json_({ ok: false, error: 'kind' });
   var site = (e && e.parameter && e.parameter.site) || b.site;

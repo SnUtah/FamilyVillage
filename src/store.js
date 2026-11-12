@@ -23,23 +23,36 @@ export const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
   : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 const notify = detail => { try { dispatchEvent(new CustomEvent('family:data', { detail })); } catch {} };
 
-/* ---------- 🔒 가족 암호 ----------
-   시트가 연결돼 있으면 시트의 스크립트가 암호를 확인하고, 맞는 암호를 보내야만 글을 내려줘요.
-   시트 없이 미리보기할 때는 config의 demoCode와 비교만 해요 (진짜 잠금은 아님). */
-export const lockRequired = () => remoteOn() || !!F().lock?.demoCode;
+/* ---------- 🔒 가족 암호 (선택) ----------
+   기본은 암호 없이 누구나 바로 들어와요. 시작 화면의 ⚙️ 또는 메뉴의 '가족 암호'에서 걸 수 있어요.
+   - 시트 연결: 암호는 시트 스크립트(Script Properties)에 저장돼 가족 모두에게 적용되고,
+                암호가 걸려 있으면 맞는 암호를 보내야만 글을 내려줘요.
+   - 시트 없음(미리보기): 이 휴대폰에만 저장되는 '흉내' 잠금이에요. */
+const LS_LOCAL_LOCK = 'family-local-lock';
+const localLock = () => { try { return JSON.parse(localStorage.getItem(LS_LOCAL_LOCK) || 'null') || {}; } catch { return {}; } };
 export const savedCode = () => { try { return localStorage.getItem(LS_CODE) || ''; } catch { return ''; } };
 const setCode = c => { try { c ? localStorage.setItem(LS_CODE, c) : localStorage.removeItem(LS_CODE); } catch {} };
+const lock = { locked: false, hint: '', known: false };
+export const lockInfo = () => ({ ...lock, remote: remoteOn() });
+/* 암호가 걸려 있는지 알아보기 (시트는 암호 없이도 '걸려 있다/아니다'와 힌트는 알려줘요) */
+export async function loadLock() {
+  if (!remoteOn()) { const l = localLock(); lock.locked = !!l.code; lock.hint = l.hint || ''; lock.known = true; return lockInfo(); }
+  try { const j = await call('GET', { action: 'status', quiet: 1 }); lock.locked = !!j.locked; lock.hint = String(j.hint || ''); lock.known = true; }
+  catch { lock.locked = !!savedCode(); lock.known = false; }   // 연결이 안 되면 이 휴대폰이 아는 대로
+  return lockInfo();
+}
+export const lockRequired = () => lock.locked;
 export function isUnlocked() {
-  if (!lockRequired()) return true;
+  if (!lock.locked) return true;
   const c = savedCode();
   if (!c) return false;
-  return remoteOn() ? true : c === String(F().lock.demoCode);
+  return remoteOn() ? true : c === localLock().code;
 }
 export async function checkCode(code) {
   code = String(code || '').trim();
   if (!code) return { ok: false, error: 'empty' };
   if (!remoteOn()) {
-    const ok = code === String(F().lock?.demoCode || '');
+    const ok = code === String(localLock().code || '');
     if (ok) setCode(code);
     return { ok, error: ok ? null : 'code' };
   }
@@ -50,6 +63,24 @@ export async function checkCode(code) {
   } catch (e) {
     return { ok: false, error: e?.message === 'code' ? 'code' : 'network' };
   }
+}
+
+/* 암호 걸기 · 바꾸기 · 없애기 (next가 비어 있으면 없애기). 걸려 있으면 지금 암호가 맞아야 해요. */
+export async function setFamilyCode({ current = '', next = '', hint = '' } = {}) {
+  next = String(next || '').trim().slice(0, 30);
+  hint = String(hint || '').trim().slice(0, 40);
+  current = String(current || savedCode()).trim();
+  if (!remoteOn()) {
+    const l = localLock();
+    if (l.code && current !== l.code) return { ok: false, error: 'code' };
+    try { next ? localStorage.setItem(LS_LOCAL_LOCK, JSON.stringify({ code: next, hint })) : localStorage.removeItem(LS_LOCAL_LOCK); } catch {}
+  } else {
+    try { await call('POST', { quiet: 1 }, { kind: 'setcode', code: current, newCode: next, hint }); }
+    catch (e) { return { ok: false, error: e?.message === 'code' ? 'code' : 'network' }; }
+  }
+  setCode(next);
+  lock.locked = !!next; lock.hint = next ? hint : ''; lock.known = true;
+  return { ok: true };
 }
 
 /* ---------- 예시 데이터 (config.samples) ----------
@@ -104,11 +135,11 @@ async function call(method, params, body) {
   try {
     const r = await fetch(u.toString(), {
       method, redirect: 'follow', signal: ctrl?.signal,
-      ...(body ? { body: JSON.stringify({ ...body, code: savedCode() }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } } : {}),
+      ...(body ? { body: JSON.stringify({ code: savedCode(), ...body }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } } : {}),
     });
     const j = await r.json();
     if (j && j.error === 'code') {
-      if (!params?.code) { setCode(''); try { dispatchEvent(new CustomEvent('family:locked')); } catch {} }
+      if (!params?.code && !params?.quiet) { setCode(''); lock.locked = true; try { dispatchEvent(new CustomEvent('family:locked')); } catch {} }
       throw new Error('code');
     }
     if (!j || j.ok !== true) throw new Error(j?.error || 'bad response');

@@ -710,3 +710,12 @@ body.season-winter {
   --bar: #DCE7F4; --qbg: #E6EDF6; --lockbg: #EDF1F6; --card-line: #D3DEEB; --card-inset: rgba(62, 111, 168, .12);
   --eyebrow: '❄️ ';
 }
+
+/* ⚙️ 가족 암호 설정 (시작 화면 오른쪽 위) */
+.intro-card { position: relative; }
+.intro-gear { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; background: var(--fill); font-size: 19px; display: grid; place-items: center; }
+.intro-gear:active { transform: scale(.92); }
+.ls-form .field { margin-top: 8px; }
+/* 시작 화면에서 연 창(⚙️ 가족 암호)은 시작 카드 위로, 안내 문구는 그 위로 */
+body:not(.playing) #modal { z-index: 56; }
+body:not(.playing) #toast { z-index: 66; }

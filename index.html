@@ -32,9 +32,10 @@
   <!-- 📖 글로 보기: 3D 없이 한 페이지로 보는 가족 마을 (내용은 textview.js가 채움) -->
   <div id="textview" role="document" aria-label="글로 보기"></div>
 
-  <!-- 시작 화면 (뒤로 마을이 천천히 돌아가며 보여요): 🔒 가족 암호 → 🙋 나는 누구 → 입장 -->
+  <!-- 시작 화면 (뒤로 마을이 천천히 돌아가며 보여요): (암호를 걸었으면 🔒) → 🙋 나는 누구 → 입장 · ⚙️ = 가족 암호 설정 -->
   <section id="intro">
     <div class="intro-card">
+      <button class="intro-gear" id="btn-lock-set" type="button" aria-label="가족 암호 설정">⚙️</button>
       <div class="intro-eyebrow">FAMILY VILLAGE</div>
       <div class="intro-names" id="i-title"></div>
       <div class="intro-date" id="i-sub"></div>
