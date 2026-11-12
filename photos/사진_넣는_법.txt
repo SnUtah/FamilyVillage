@@ -1,0 +1,9 @@
+사진 넣는 곳
+
+config.js 의 demoPhotos 를 false 로 바꾸고, 테마 폴더에 1.jpg, 2.jpg ... 순서로 넣으세요.
+  trips     가족 여행
+  holidays  명절과 생일
+  growing   아이들 자라는 모습
+  everyday  평범한 날들
+  old       옛날 사진
+각 테마의 count 를 사진 수에 맞추고, 긴 변 1600px 정도로 줄여서 넣으면 빨라요.
