@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { isMobile, formatKDate, damp } from './util.js';
 import { buildEnvironment, spawnHearts, updateBursts, throwSprite, TIMES } from './world.js';
+import { setSeason as pickSeason } from './season.js';
 import { buildProps, MUSEUM_DOOR, BED } from './props.js';
 import { buildMuseum } from './museum.js';
 import { createCharacter } from './character.js';
@@ -122,6 +123,12 @@ export async function init({ character: c, onProgress = () => {} } = {}) {
   addEventListener('family:water', e => waterFx(e.detail));
   addEventListener('family:look', e => { setCharacter(e.detail || {}); props.houses.refresh(); });
   addEventListener('family:me', () => { setCharacter(V.currentLook()); props.refresh(); });
+  // 🌿 → 🍂 → ❄️ 계절이 바뀌면 하늘·땅·나무·지붕을 바꿈 (실내에선 바깥만 바꿔 둠)
+  addEventListener('family:season', e => {
+    const p = env.setSeason(e.detail);
+    if (state.mode === 'out') setLights(p);
+    props.refresh();
+  });
 
   // 톡 누른 자리에 잠깐 보이는 표시
   marker = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.48, 24), new THREE.MeshBasicMaterial({ color: '#E07B39', transparent: true, opacity: 0, depthWrite: false }));
@@ -149,7 +156,7 @@ export async function init({ character: c, onProgress = () => {} } = {}) {
     idle(step);
   }
   // 주소 끝에 #debug 가 있으면 콘솔에서 만져 볼 수 있는 손잡이 (테스트용)
-  if (/debug/.test(location.hash)) window.__wv = { goTo: id => goTo(props.interactables.find(i => i.id === id)), takePhoto, enterMuseum, exitMuseum, cycleTime, startTour, stopTour, applyTime, state, props, flowerCount: () => props.flowerCount(), interact: id => interact(props.interactables.find(i => i.id === id)), npcVisible: id => !!props.houses.npc(id)?.root.visible, treeStage: () => props.familyTree.refresh().stage, current: () => current?.id || '', pos: () => [state.pos.x, state.pos.z] };
+  if (/debug/.test(location.hash)) window.__wv = { goTo: id => goTo(props.interactables.find(i => i.id === id)), takePhoto, enterMuseum, exitMuseum, cycleTime, startTour, stopTour, applyTime, state, props, flowerCount: () => props.flowerCount(), interact: id => interact(props.interactables.find(i => i.id === id)), npcVisible: id => !!props.houses.npc(id)?.root.visible, treeStage: () => props.familyTree.refresh().stage, current: () => current?.id || '', pos: () => [state.pos.x, state.pos.z], setSeason: s => pickSeason(s), season: () => env.season };
 
   return {
     themes: museum.themes, start, setCharacter, enterMuseum: () => enterMuseum(), letterSent, takePhoto: ids => takePhoto(true, ids),
@@ -567,7 +574,7 @@ async function exitMuseum(fromBack = false) {
   env.group.visible = props.group.visible = true;
   museum.group.visible = false;
   sun.castShadow = renderer.shadowMap.enabled;
-  setLights(TIMES[timeMode]);
+  setLights(env.palette());
   state.pos.set(MUSEUM_DOOR.x, 0, MUSEUM_DOOR.z + 2.4);
   state.vel.set(0, 0, 0); state.target = null; state.yaw = 0;
   state.doorCooldown = 1.5;

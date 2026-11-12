@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { mesh, textCanvas, canvasTex, labelSprite, clamp, gradientMap } from './util.js';
 
 import { createCharacter } from './character.js';
-import { balloons } from './world.js';
+import { balloons, onlyIn, bulbMats } from './world.js';
+import { getSeason } from './season.js';
 import {
   members, meId, heartsTo, birthdaysOn, unreadForMe, answersOn, isLockedLetter, treeInfo, dayKey,
 } from './family.js';
@@ -93,6 +94,21 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
       g.add(slab);
     }
     g.add(mesh(new THREE.BoxGeometry(0.16, 0.16, 2.95), darken(col, 0.4), 0, 3.08, 0));
+    // ❄️ 겨울: 지붕에 쌓인 눈 + 앞쪽 처마를 따라 반짝이는 전구
+    const winter = new THREE.Group();
+    for (const sd of [-1, 1]) {
+      const snow = mesh(new THREE.BoxGeometry(2.0, 0.12, 2.94), '#FBFCFE', sd * 0.78 + sd * 0.07, 2.58, 0);
+      snow.rotation.z = -sd * 0.66;
+      winter.add(snow);
+    }
+    const bulbs = bulbMats(), bulbGeo = new THREE.SphereGeometry(0.075, 8, 6);
+    for (let k = 0; k <= 12; k++) {
+      const u = k / 12, x = -1.55 + u * 3.1, y = 1.93 + (1 - Math.abs(u - 0.5) * 2) * 1.12;
+      const b = new THREE.Mesh(bulbGeo, bulbs[(k + i) % bulbs.length]);
+      b.position.set(x, y - 0.06, 1.5);
+      winter.add(b);
+    }
+    g.add(onlyIn(winter, 'winter'));
     g.add(mesh(new THREE.BoxGeometry(0.34, 0.85, 0.34), '#A39A8F', 0.8, 2.85, -0.55));   // 돌 굴뚝
     g.add(mesh(new THREE.BoxGeometry(0.72, 1.12, 0.06), darken(col, 0.1), 0, 0.56, 1.22));   // 문
     g.add(mesh(new THREE.SphereGeometry(0.05, 8, 6), '#F2C14E', 0.22, 0.55, 1.27));
@@ -308,13 +324,13 @@ export function buildFamilyTree({ group, colliders, addInteract, updaters }) {
   const sprout = new THREE.Group();
   sprout.add(mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 6), '#8DC175', 0, 0.48, 0));
   for (const s of [-1, 1]) { const l = mesh(new THREE.SphereGeometry(0.16, 10, 8), '#9ED08A', s * 0.15, 0.74, 0); l.scale.set(1.3, 0.5, 0.8); l.rotation.z = s * 0.5; sprout.add(l); }
+  const leafMat = new THREE.MeshToonMaterial({ color: '#86C174', gradientMap });   // 계절 색 · 목마르면 바래요 (이 나무만의 재질)
   const sapling = new THREE.Group();
   sapling.add(mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.3, 8), '#A47A5C', 0, 0.85, 0));
-  [[0, 1.75, 0, 0.55], [0.35, 1.45, 0.1, 0.38], [-0.32, 1.5, -0.1, 0.4]].forEach(([x, y, z, s]) => { const b = mesh(new THREE.IcosahedronGeometry(1, 1), '#9ED08A', x, y, z); b.scale.setScalar(s); sapling.add(b); });
+  [[0, 1.75, 0, 0.55], [0.35, 1.45, 0.1, 0.38], [-0.32, 1.5, -0.1, 0.4]].forEach(([x, y, z, s]) => { const b = mesh(new THREE.IcosahedronGeometry(1, 1), leafMat, x, y, z); b.scale.setScalar(s); sapling.add(b); });
   const big = new THREE.Group();
   big.add(mesh(new THREE.CylinderGeometry(0.22, 0.34, 2.2, 10), '#A47A5C', 0, 1.3, 0));
   const leafBlobs = [[0, 3.1, 0, 1.25], [0.9, 2.65, 0.25, 0.9], [-0.85, 2.75, -0.2, 0.95], [0.15, 3.85, -0.1, 0.85], [-0.3, 2.6, 0.75, 0.75]];
-  const leafMat = new THREE.MeshToonMaterial({ color: '#9DB65A', gradientMap });   // 목마르면 색이 바래요 (이 나무만의 재질)
   leafBlobs.forEach(([x, y, z, s]) => { const b = mesh(new THREE.IcosahedronGeometry(1, 1), leafMat, x, y, z); b.scale.setScalar(s); big.add(b); });
   const blossoms = new THREE.Group(), fruits = new THREE.Group();
   const fGeo = new THREE.IcosahedronGeometry(0.13, 0), apple = new THREE.SphereGeometry(0.15, 10, 8);
@@ -354,7 +370,8 @@ export function buildFamilyTree({ group, colliders, addInteract, updaters }) {
       stage = info.stage; show(stage);
       if (grew) pop = 1;
     }
-    leafMat.color.set(info.thirsty ? '#BBAE73' : '#9DB65A');
+    const LEAVES = { green: ['#86C174', '#A9B97A'], autumn: ['#E39B3B', '#C2A46A'], winter: ['#EEF3F8', '#D7DDE3'] }[getSeason()] || ['#86C174', '#A9B97A'];
+    leafMat.color.set(info.thirsty ? LEAVES[1] : LEAVES[0]);   // 계절 색 (목마르면 바랜 색)
     const text = info.thirsty ? '💧 목말라요… 물을 주세요' : info.todayWho.length ? `💧 오늘 ${info.todayWho.length}명이 물을 줬어요` : `🌱 ${info.stageName} · 물 ${info.total}번`;
     if (text !== statusText) {
       statusText = text;

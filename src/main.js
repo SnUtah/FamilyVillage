@@ -6,6 +6,7 @@ import { formatKDate, photoThemes, buzz, isDemoClock, dayKey } from './common.js
 import { refresh, add, lockRequired, isUnlocked, checkCode, remoteOn } from './store.js';
 import { villageName, sinceDays, todayEvents, me, meId, setMe, isGuest, callName, unreadForMe, visitedOn } from './family.js';
 import { sound } from './sound.js';
+import { getSeason, nextSeason, SEASON_INFO } from './season.js';
 
 /* =========================================================
    시작 화면 & 3D 마을 불러오기
@@ -235,6 +236,7 @@ async function boot() {
     { emoji: '🗺️', label: '모이는 곳', go: UI.showDirections },
     ...(me() ? [{ emoji: '🏠', label: '내 집', go: () => V.showMember(meId()) }] : []),
     { emoji: '🎨', label: '캐릭터 꾸미기', go: V.showLook },
+    { emoji: SEASON_INFO[getSeason()].emoji, label: `계절: ${SEASON_INFO[getSeason()].label}`, go: () => { UI.closeModal(); const s = nextSeason(); UI.toast(`${SEASON_INFO[s].toast} · 메뉴에서 또 바꿀 수 있어요`, 3000); } },
     { emoji: '🙋', label: '나는 누구?', go: () => V.showWho(onPick) },
     ...(game ? [
       { emoji: '🚶', label: '자동 투어', go: () => { UI.closeModal(); game.startTour(); } },

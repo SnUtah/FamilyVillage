@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { toon, mesh, textCanvas, canvasTex, labelSprite, rand, roundRect } from './util.js';
-import { throwSprite } from './world.js';
+import { throwSprite, flowerMat, bushMat } from './world.js';
 import { buildHouses, buildFamilyTree } from './houses.js';
 import { keyLabel } from './common.js';
 import { villageName, sinceDays, visitorsOn, upcoming, ddayText, questionOn, answersOn, memberColor } from './family.js';
@@ -407,14 +407,13 @@ export function buildProps(scene) {
   /* ---------- 🏘️ 가족 집 골목 + 🌱 함께 키우는 나무 (골목 끝, 뒤로 꽃 울타리) ---------- */
   {
     const g = new THREE.Group();
-    const fcols = ['#D9553B', '#F2C14E', '#E8763E', '#FFFFFF', '#C9452F', '#F7D46A'];
-    // 뒤쪽 덤불 울타리 (단풍 든 덤불)
+    // 뒤쪽 덤불 울타리 (계절 따라 초록 → 단풍 → 눈)
     for (let i = 0; i < 9; i++) {
       const hx = -6 + i * 1.5;
-      const h = mesh(new THREE.IcosahedronGeometry(0.9, 1), ['#93A35A', '#B98A3E', '#A9A55E'][i % 3], hx, 0.8, -22.3);
+      const h = mesh(new THREE.IcosahedronGeometry(0.9, 1), bushMat(i), hx, 0.8, -22.3);
       h.scale.set(1, 1.1, 0.8);
       g.add(h);
-      g.add(mesh(new THREE.IcosahedronGeometry(0.18, 0), fcols[i % fcols.length], hx + 0.3, 1.4, -21.6));
+      g.add(mesh(new THREE.IcosahedronGeometry(0.18, 0), flowerMat(i), hx + 0.3, 1.4, -21.6));
     }
     group.add(g);
     boxes.push({ minX: -7, maxX: 7, minZ: -23.5, maxZ: -21.5 });
@@ -436,9 +435,8 @@ export function buildProps(scene) {
     const sign = facePlane(textCanvas('FAMILY PHOTO', { w: 512, h: 110, size: 60, bg: '#FFF6E6', radius: 55, color: '#B5552B' }), 2, 0.43);
     sign.position.set(0, y0 + fh + 0.4, 0.05);
     g.add(sign);
-    const fcols = ['#D9553B', '#F2C14E', '#E8763E', '#B9773E'];
     for (let i = 0; i < 18; i++) {
-      const f = mesh(new THREE.IcosahedronGeometry(0.16, 1), fcols[i % 4], -fw / 2 + rand(-0.15, 0.3), y0 + rand(0, 1.1), rand(-0.1, 0.15));
+      const f = mesh(new THREE.IcosahedronGeometry(0.16, 1), flowerMat(i), -fw / 2 + rand(-0.15, 0.3), y0 + rand(0, 1.1), rand(-0.1, 0.15));
       g.add(f);
     }
     g.position.set(-11, 0, 19);
@@ -452,10 +450,9 @@ export function buildProps(scene) {
   /* ---------- 마을 입구 아치 ---------- */
   {
     const g = new THREE.Group();
-    const fcols = ['#D9553B', '#F2C14E', '#E8763E', '#93A35A'];
     for (const s of [-1, 1]) {
       g.add(mesh(new THREE.CylinderGeometry(0.16, 0.2, 3.6, 10), '#8F6243', s * 2.7, 1.8, 0));
-      for (let i = 0; i < 7; i++) g.add(mesh(new THREE.IcosahedronGeometry(0.17, 1), fcols[i % 4], s * 2.7 + rand(-0.2, 0.2), 0.4 + i * 0.45, rand(-0.2, 0.2)));
+      for (let i = 0; i < 7; i++) g.add(mesh(new THREE.IcosahedronGeometry(0.17, 1), flowerMat(i + (s > 0 ? 1 : 0)), s * 2.7 + rand(-0.2, 0.2), 0.4 + i * 0.45, rand(-0.2, 0.2)));
     }
     const sign = facePlane(textCanvas(villageName(), { w: 768, h: 150, size: 74, bg: '#FFF6E6', border: '#B07A4F', radius: 60, color: '#B5452F' }), 5.2, 1.0);
     sign.position.set(0, 3.7, 0.13);

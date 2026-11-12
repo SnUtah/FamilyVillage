@@ -1,29 +1,46 @@
 import * as THREE from 'three';
 import { toon, mesh, canvasTex, rand, isMobile, gradientMap, reduceMotion } from './util.js';
+import { getSeason } from './season.js';
 
 /* =========================================================
-   바깥 마을 환경 (가을 숲속 고향 마을): 하늘(낮·노을·밤), 가을 풀밭, 흙길,
-   단풍·은행·감·소나무, 코스모스, 버섯, 허수아비, 구름, 떨어지는 낙엽, 고추잠자리
+   바깥 마을 환경 (숲속 마을): 하늘(낮·노을·밤), 풀밭, 흙길, 나무, 꽃, 구름, 날리는 것, 날아다니는 것
+   🌿 봄·여름(기본): 싱그러운 초록 숲, 연분홍 꽃나무, 들꽃, 민들레 홀씨, 나비
+   🍂 가을: 단풍·은행·주렁주렁 감, 코스모스, 낙엽, 고추잠자리, 허수아비, 낙엽 더미
+   ❄️ 겨울: 눈 덮인 땅과 나무, 하얀 지붕, 내리는 눈, 🎄 크리스마스 트리와 집집마다 전구
+   계절이 바뀌면 같은 물체의 색만 바꾸거나(seasonMat) 보이기/숨기기(onlyIn)만 해서 가볍게 바뀌어요.
    ========================================================= */
 
 export const PATHS = [
   // [x1, z1, x2, z2, width]
   [0, 34, 0, 10, 3.2],        // 입구 → 광장 (가운데 모닥불)
   [0, -2, 0, -18, 2.6],       // 광장 → 가족 집 골목 → 함께 키우는 나무
-  [5, 1, 20, -5.5, 2.6],      // 광장 → 뮤지엄
-  [-6, 3, -12, 2, 2.4],       // 광장 → 선물상자
+  [5, 1, 20, -5.5, 2.6],      // 광장 → 사진관
+  [-6, 3, -12, 2, 2.4],       // 광장 → 투표함
   [-6, 0, -18, -10, 2.4],     // 광장 → 퀴즈
-  [6, 7, 10, 9, 2.2],         // 광장 → 식순 보드
+  [6, 7, 10, 9, 2.2],         // 광장 → 가족 달력
   [-2, 20, -10, 19, 2.2],     // 입구 → 포토존
 ];
 export const PLAZA = { x: 0, z: 4, r: 7.5 };
 
-/* 시간대별 색 (하늘 셰이더·안개·조명): 낮도 살짝 금빛이 도는 가을 오후 */
-export const TIMES = {
-  day:   { top: '#78B4DC', mid: '#F3D9AE', horizon: '#FFCB8E', fog: '#F6D2A2', sun: '#FFD9A8', sunI: 2.35, hemi: '#FFEBD2', ground: '#C7B27E', hemiI: 1.85, lamps: false, stars: false },
-  dusk:  { top: '#5E6FB0', mid: '#F29A64', horizon: '#FFC27A', fog: '#F7B97E', sun: '#FFA066', sunI: 2.0, hemi: '#FFCFA6', ground: '#A88E6E', hemiI: 1.6, lamps: true,  stars: false },
-  night: { top: '#121B38', mid: '#2C3762', horizon: '#5B4766', fog: '#4E4462', sun: '#B8C4F0', sunI: 1.05, hemi: '#8E9BCB', ground: '#3E4552', hemiI: 1.2, lamps: true, stars: true },
+/* 계절 × 시간대별 색 (하늘 셰이더·안개·조명) */
+export const SKIES = {
+  green: {
+    day:   { top: '#6FB7E8', mid: '#BFE3F7', horizon: '#EAF6E4', fog: '#E3F1DC', sun: '#FFF4DE', sunI: 2.4, hemi: '#F4FBEF', ground: '#B9D8A0', hemiI: 1.9, lamps: false, stars: false },
+    dusk:  { top: '#6A7FC4', mid: '#F6A77A', horizon: '#FFD39B', fog: '#F9D2A0', sun: '#FFB07A', sunI: 2.0, hemi: '#FFD8B6', ground: '#A9B890', hemiI: 1.6, lamps: true, stars: false },
+    night: { top: '#0F1B3D', mid: '#24386A', horizon: '#3F5A78', fog: '#3D5674', sun: '#B8C8FF', sunI: 1.1, hemi: '#8FA8D8', ground: '#3E5048', hemiI: 1.25, lamps: true, stars: true },
+  },
+  autumn: {
+    day:   { top: '#78B4DC', mid: '#F3D9AE', horizon: '#FFCB8E', fog: '#F6D2A2', sun: '#FFD9A8', sunI: 2.35, hemi: '#FFEBD2', ground: '#C7B27E', hemiI: 1.85, lamps: false, stars: false },
+    dusk:  { top: '#5E6FB0', mid: '#F29A64', horizon: '#FFC27A', fog: '#F7B97E', sun: '#FFA066', sunI: 2.0, hemi: '#FFCFA6', ground: '#A88E6E', hemiI: 1.6, lamps: true, stars: false },
+    night: { top: '#121B38', mid: '#2C3762', horizon: '#5B4766', fog: '#4E4462', sun: '#B8C4F0', sunI: 1.05, hemi: '#8E9BCB', ground: '#3E4552', hemiI: 1.2, lamps: true, stars: true },
+  },
+  winter: {
+    day:   { top: '#8FB4D8', mid: '#D8E6F2', horizon: '#F4F1EC', fog: '#E6EDF3', sun: '#FFF6EA', sunI: 2.15, hemi: '#F2F6FA', ground: '#D9E2EA', hemiI: 2.0, lamps: false, stars: false },
+    dusk:  { top: '#5A6AA8', mid: '#D99AA0', horizon: '#F2C7A8', fog: '#E5C8C2', sun: '#FFC6A0', sunI: 1.9, hemi: '#EAD8E0', ground: '#B8B8C8', hemiI: 1.65, lamps: true, stars: false },
+    night: { top: '#0E1A36', mid: '#26365E', horizon: '#4A5A80', fog: '#46557A', sun: '#C8D6FF', sunI: 1.15, hemi: '#9AAAD8', ground: '#5A6680', hemiI: 1.4, lamps: true, stars: true },
+  },
 };
+export const TIMES = SKIES.green;   // 시간대 이름 목록 · 사진관 실내 조명용
 
 function distToSeg(px, pz, x1, z1, x2, z2) {
   const dx = x2 - x1, dz = z2 - z1;
@@ -82,27 +99,64 @@ function makeSky() {
   return sky;
 }
 
-/* ---------- 잔디 텍스처 ---------- */
-function grassTexture() {
+/* ---------- 🌿🍂❄️ 계절에 따라 바뀌는 것들 ----------
+   seasonMat({ green, autumn, winter }) → 계절마다 색이 바뀌는 재질 (여러 물체가 같이 씀)
+   onlyIn(물체, '계절'…)              → 그 계절에만 보이는 물체 */
+const seasonal = [];
+export function seasonMat(cols) {
+  const mat = new THREE.MeshToonMaterial({ color: cols[getSeason()] || cols.green, gradientMap });
+  seasonal.push({ mat, cols });
+  return mat;
+}
+export function onlyIn(obj, ...seasons) {
+  seasonal.push({ obj, seasons });
+  obj.visible = seasons.includes(getSeason());
+  return obj;
+}
+function applySeasonal(s) {
+  seasonal.forEach(e => { if (e.mat) e.mat.color.set(e.cols[s] || e.cols.green); else e.obj.visible = e.seasons.includes(s); });
+}
+const matSet = list => list.map(c => seasonMat(c));
+const W3 = ['#F4F7FB', '#E3EAF2', '#FFFFFF'];   // 눈 덮인 잎
+const LEAF = {
+  maple:     matSet([0, 1, 2].map(i => ({ green: ['#7DBB5E', '#8FC970', '#6EAD52'][i], autumn: ['#D9553B', '#E8763E', '#C9452F'][i], winter: W3[i] }))),
+  ginkgo:    matSet([0, 1, 2].map(i => ({ green: ['#F7D3DC', '#FBE4EA', '#F2BFCD'][i], autumn: ['#F2C14E', '#F7D46A', '#E3AE36'][i], winter: W3[(i + 1) % 3] }))),
+  persimmon: matSet([0, 1, 2].map(i => ({ green: ['#6FA858', '#82B868', '#5F9A4C'][i], autumn: ['#A9B55A', '#C2BD5E', '#97A64C'][i], winter: W3[(i + 2) % 3] }))),
+  pine:      matSet([0, 1, 2].map(i => ({ green: ['#3F6E45', '#4C7D50', '#386340'][i], autumn: ['#4F7A4A', '#5C8A52', '#476F43'][i], winter: ['#567F64', '#EEF3F1', '#6B8F78'][i] }))),
+};
+const BUSH = matSet([0, 1, 2].map(i => ({ green: ['#8CC47A', '#9ED08A', '#7DB86C'][i], autumn: ['#B98A3E', '#C76B3C', '#93A35A'][i], winter: ['#E9EFF4', '#DDE6EE', '#F4F7FA'][i] })));
+const HILL = matSet([0, 1, 2, 3].map(i => ({ green: ['#9CCB84', '#AED596', '#8FBF78', '#A7CF8C'][i], autumn: ['#B7AE66', '#C79A55', '#A9A55E', '#C4884A'][i], winter: ['#E8EEF3', '#DCE4EC', '#F2F5F8', '#D5DEE8'][i] })));
+const FLOWER = matSet([0, 1, 2, 3].map(i => ({ green: ['#F4B8C0', '#FFFFFF', '#F7D58B', '#B9A4E8'][i], autumn: ['#D9553B', '#F2C14E', '#E8763E', '#B9773E'][i], winter: ['#FFFFFF', '#C94F4F', '#E3EAF2', '#9DB7D5'][i] })));
+export const bushMat = i => BUSH[i % 3];
+export const flowerMat = i => FLOWER[i % 4];
+
+/* ---------- 풀밭 텍스처 (계절마다 하나씩, 처음 쓸 때 만듦) ---------- */
+const groundTex = {};
+function grassTexture(season) {
+  if (groundTex[season]) return groundTex[season];
   const c = document.createElement('canvas');
   c.width = c.height = 256;
   const g = c.getContext('2d');
-  g.fillStyle = '#B7C27C'; g.fillRect(0, 0, 256, 256);
-  const cols = ['#ABB86F', '#C3CB88', '#A6B266', '#CBC88E'];
+  const look = {
+    green: { base: '#A9D18E', dots: ['#9DC883', '#B4D899', '#A2CC87', '#BEDDA3'], bits: ['#FFFFFF', '#F7D84E', '#F4B8C0'], nb: 40 },
+    autumn: { base: '#B7C27C', dots: ['#ABB86F', '#C3CB88', '#A6B266', '#CBC88E'], bits: ['#E0863E', '#D35F3A', '#E8B547', '#B9773E'], nb: 90 },
+    winter: { base: '#EEF3F8', dots: ['#E3EAF1', '#FFFFFF', '#DAE3EC', '#F6F9FB'], bits: ['#B9C9B3', '#C8D2DA'], nb: 30 },
+  }[season] || {};
+  g.fillStyle = look.base; g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 1400; i++) {
-    g.fillStyle = cols[i % cols.length];
+    g.fillStyle = look.dots[i % look.dots.length];
     g.globalAlpha = 0.5;
     g.beginPath(); g.arc(Math.random() * 256, Math.random() * 256, Math.random() * 3 + 1, 0, 7); g.fill();
   }
-  // 바닥에 떨어진 낙엽
-  const leaves = ['#E0863E', '#D35F3A', '#E8B547', '#B9773E'];
-  for (let i = 0; i < 90; i++) {
-    g.fillStyle = leaves[i % leaves.length]; g.globalAlpha = 0.55;
+  // 작은 꽃잎 · 낙엽 · 눈 밖으로 나온 풀
+  for (let i = 0; i < look.nb; i++) {
+    g.fillStyle = look.bits[i % look.bits.length]; g.globalAlpha = 0.6;
     g.beginPath(); g.ellipse(Math.random() * 256, Math.random() * 256, 2.6, 1.5, Math.random() * 3, 0, 7); g.fill();
   }
   const t = canvasTex(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(60, 60);
+  groundTex[season] = t;
   return t;
 }
 
@@ -122,34 +176,30 @@ function pathTexture() {
   return t;
 }
 
-/* ---------- 나무: 단풍 · 은행 · 감나무(주황 감) · 소나무 ---------- */
+/* ---------- 나무: 단풍 · 꽃나무(가을엔 은행) · 감나무 · 소나무 ---------- */
 const trunkGeo = new THREE.CylinderGeometry(0.22, 0.32, 2, 8);
 const leafGeo = new THREE.IcosahedronGeometry(1.3, 1);
 const coneGeo = new THREE.ConeGeometry(1.35, 1.9, 8);
 const fruitGeo = new THREE.SphereGeometry(0.15, 8, 6);
-const LEAVES = {
-  maple: ['#D9553B', '#E8763E', '#C9452F'],
-  ginkgo: ['#F2C14E', '#F7D46A', '#E3AE36'],
-  persimmon: ['#A9B55A', '#C2BD5E', '#97A64C'],
-  green: ['#8CB86A', '#9EC27A', '#7DAA5E'],
-};
 export function tree(x, z, { kind = 'maple', s = 1 } = {}) {
   const g = new THREE.Group();
   if (kind === 'pine') {
     g.add(mesh(trunkGeo, '#7E553A', 0, 0.8, 0));
-    [[1.9, 1.0], [2.85, 0.8], [3.65, 0.58]].forEach(([y, sc], i) => { const c = mesh(coneGeo, ['#4F7A4A', '#5C8A52', '#476F43'][i], 0, y, 0); c.scale.setScalar(sc); g.add(c); });
+    [[1.9, 1.0], [2.85, 0.8], [3.65, 0.58]].forEach(([y, sc], i) => { const c = mesh(coneGeo, LEAF.pine[i], 0, y, 0); c.scale.setScalar(sc); g.add(c); });
   } else {
     g.add(mesh(trunkGeo, '#8F6243', 0, 1, 0));
-    const palette = LEAVES[kind] || LEAVES.green;
+    const mats = LEAF[kind] || LEAF.maple;
     const blobs = [[0, 2.6, 0, 1.2], [0.8, 2.2, 0.2, 0.85], [-0.75, 2.3, -0.2, 0.9], [0.1, 3.3, -0.1, 0.8]];
     blobs.forEach(([bx, by, bz, bs], i) => {
-      const l = mesh(leafGeo, palette[i % 3], bx, by, bz);
+      const l = mesh(leafGeo, mats[i % 3], bx, by, bz);
       l.scale.setScalar(bs);
       g.add(l);
     });
-    if (kind === 'persimmon') {   // 주렁주렁 감
+    if (kind === 'persimmon') {   // 주렁주렁 감 (가을에만)
+      const fruits = new THREE.Group();
       [[0.9, 2.5, 0.9], [-0.5, 2.0, 1.0], [0.3, 3.0, 1.15], [-1.2, 2.6, 0.4], [1.3, 2.0, -0.2], [0.1, 1.9, 1.25], [-0.6, 3.4, 0.7]]
-        .forEach(([fx, fy, fz]) => g.add(mesh(fruitGeo, '#F28C28', fx, fy, fz)));
+        .forEach(([fx, fy, fz]) => fruits.add(mesh(fruitGeo, '#F28C28', fx, fy, fz)));
+      g.add(onlyIn(fruits, 'autumn'));
     }
   }
   g.position.set(x, 0, z);
@@ -158,10 +208,10 @@ export function tree(x, z, { kind = 'maple', s = 1 } = {}) {
   return g;
 }
 
-export function bush(x, z, s = 1, color = '#B98A3E') {
+export function bush(x, z, s = 1, i = 0) {
   const g = new THREE.Group();
   [[0, 0.45, 0, 0.6], [0.5, 0.35, 0.1, 0.45], [-0.45, 0.35, -0.05, 0.45]].forEach(([bx, by, bz, bs]) => {
-    const b = mesh(leafGeo, color, bx, by, bz);
+    const b = mesh(leafGeo, bushMat(i), bx, by, bz);
     b.scale.setScalar(bs);
     g.add(b);
   });
@@ -249,7 +299,7 @@ export function balloons(x, z, h = 3.2) {
   return g;
 }
 
-/* ---------- 🧑‍🌾 허수아비 · 🍂 낙엽 더미 ---------- */
+/* ---------- 🧑‍🌾 허수아비 (봄~가을) · 🍂 낙엽 더미 · 눈 무더기 ---------- */
 export function scarecrow(x, z, rotY = 0) {
   const g = new THREE.Group();
   g.add(mesh(new THREE.CylinderGeometry(0.06, 0.07, 2.6, 6), '#8F6243', 0, 1.3, 0));
@@ -267,9 +317,42 @@ export function scarecrow(x, z, rotY = 0) {
   g.rotation.y = rotY;
   return g;
 }
-export function leafPile(x, z, s = 1) {
+/* 🎄 겨울 광장의 크리스마스 트리 (전구가 반짝반짝) */
+export const twinkle = [];   // 반짝이는 전구 재질 (집 지붕 전구도 같이 씀)
+export function bulbMats() {
+  if (!twinkle.length) ['#FF5A5A', '#FFD34D', '#6FD3FF', '#9BE87A', '#FFFFFF'].forEach((c, i) => twinkle.push({ mat: new THREE.MeshBasicMaterial({ color: c }), base: new THREE.Color(c), off: i * 1.3 }));
+  return twinkle.map(b => b.mat);
+}
+export function christmasTree(x, z, s = 1) {
   const g = new THREE.Group();
-  const cols = ['#D9553B', '#E8763E', '#F2C14E', '#B9773E'];
+  g.add(mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.0, 8), '#7E553A', 0, 0.5, 0));
+  g.add(mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.5, 12), '#C94F4F', 0, 0.25, 0));   // 화분
+  const greens = ['#2F6B3E', '#377747', '#2A603A', '#3E8250'];
+  [[1.6, 1.45, 1.7], [2.55, 1.15, 1.4], [3.35, 0.85, 1.1], [4.0, 0.55, 0.85]].forEach(([y, r, h], i) => g.add(mesh(new THREE.ConeGeometry(r, h, 12), greens[i], 0, y, 0)));
+  const bulbs = bulbMats(), bulbGeo = new THREE.SphereGeometry(0.09, 8, 6), ornGeo = new THREE.SphereGeometry(0.14, 10, 8);
+  for (let i = 0; i < 46; i++) {   // 나선으로 감은 전구
+    const k = i / 46, y = 1.0 + k * 3.2, r = 1.35 * (1 - k * 0.82) + 0.05, a = k * Math.PI * 9;
+    const b = new THREE.Mesh(bulbGeo, bulbs[i % bulbs.length]);
+    b.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+    g.add(b);
+  }
+  ['#C94F4F', '#E2B865', '#4A7FB5', '#FFFFFF'].forEach((c, k) => {
+    for (let i = 0; i < 4; i++) {
+      const y = 1.3 + ((i * 4 + k) % 13) * 0.21, r = 1.4 * (1 - (y - 1) / 3.6) + 0.08, a = i * 1.7 + k * 0.6;
+      g.add(mesh(ornGeo, c, Math.cos(a) * r, y, Math.sin(a) * r));
+    }
+  });
+  const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), new THREE.MeshBasicMaterial({ color: '#FFD34D' }));
+  star.position.y = 4.5; star.scale.set(1, 1.25, 0.45);
+  g.add(star);
+  g.position.set(x, 0, z);
+  g.scale.setScalar(s);
+  g.userData.star = star;
+  return g;
+}
+export function leafPile(x, z, s = 1, winter = false) {
+  const g = new THREE.Group();
+  const cols = winter ? ['#FBFCFE', '#EEF3F8', '#F6F9FB', '#E6EDF4'] : ['#D9553B', '#E8763E', '#F2C14E', '#B9773E'];
   [[0, 0.22, 0, 0.75], [0.45, 0.16, 0.2, 0.5], [-0.4, 0.15, -0.15, 0.55], [0.1, 0.14, -0.45, 0.45]].forEach(([bx, by, bz, bs], i) => {
     const b = mesh(leafGeo, cols[i % cols.length], bx, by, bz);
     b.scale.set(bs, bs * 0.4, bs);
@@ -280,11 +363,15 @@ export function leafPile(x, z, s = 1) {
   return g;
 }
 
-/* ---------- 꽃 & 풀 (인스턴싱으로 가볍게): 가을 풀 · 코스모스 · 버섯 ---------- */
+/* ---------- 풀 · 꽃 · 버섯 (인스턴싱으로 가볍게) ---------- */
+const FLORA_COLORS = {
+  green: ['#FFFFFF', '#F7D84E', '#B9A4E8', '#F4A6C6', '#FFE07A', '#9FD3F0'],   // 들꽃
+  autumn: ['#FFFFFF', '#F4A6C6', '#E07BB5', '#F2C14E', '#F6CBE0', '#E9894A'],  // 코스모스
+};
 function scatterFlora(scene, avoid) {
   const n = isMobile ? 500 : 900;
   const tuftGeo = new THREE.ConeGeometry(0.07, 0.4, 3);
-  const tufts = new THREE.InstancedMesh(tuftGeo, toon('#A9B46C'), n);
+  const tufts = new THREE.InstancedMesh(tuftGeo, seasonMat({ green: '#8DC175', autumn: '#A9B46C', winter: '#D8E2E8' }), n);
   const flowerGeo = new THREE.IcosahedronGeometry(0.11, 0);
   const nf = isMobile ? 260 : 480;
   const flowers = new THREE.InstancedMesh(flowerGeo, new THREE.MeshToonMaterial({ color: '#fff' }), nf);
@@ -306,16 +393,14 @@ function scatterFlora(scene, avoid) {
     m.compose(p.set(x, 0.18 * sc, z), q, s.set(sc, sc, sc));
     tufts.setMatrixAt(i, m);
   }
-  const fcols = ['#FFFFFF', '#F4A6C6', '#E07BB5', '#F2C14E', '#F6CBE0', '#E9894A'].map(c => new THREE.Color(c));   // 코스모스
   for (let i = 0; i < nf; i++) {
     const [x, z] = place();
     m.compose(p.set(x, 0.14, z), q.identity(), s.setScalar(rand(0.8, 1.3)));
     flowers.setMatrixAt(i, m);
-    flowers.setColorAt(i, fcols[i % fcols.length]);
   }
   tufts.receiveShadow = true;
-  scene.add(tufts, flowers);
-  // 숲 가장자리의 빨간 버섯
+  scene.add(onlyIn(tufts, 'green', 'autumn'), flowers);
+  // 숲 가장자리의 빨간 버섯 (눈 오면 숨음)
   const nm = 22;
   const stems = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.06, 0.08, 0.26, 6), toon('#F6EBD8'), nm);
   const caps = new THREE.InstancedMesh(new THREE.SphereGeometry(0.17, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), toon('#D9553B'), nm);
@@ -326,7 +411,17 @@ function scatterFlora(scene, avoid) {
     m.compose(p.set(x, 0.13 * sc, z), q.identity(), s.setScalar(sc)); stems.setMatrixAt(i, m);
     m.compose(p.set(x, 0.25 * sc, z), q.identity(), s.setScalar(sc)); caps.setMatrixAt(i, m);
   }
-  scene.add(stems, caps);
+  scene.add(onlyIn(stems, 'green', 'autumn'), onlyIn(caps, 'green', 'autumn'));
+  return {
+    setSeason(season) {
+      const cols = FLORA_COLORS[season];
+      flowers.visible = !!cols;
+      if (!cols) return;
+      const cc = cols.map(c => new THREE.Color(c));
+      for (let i = 0; i < nf; i++) flowers.setColorAt(i, cc[i % cc.length]);
+      flowers.instanceColor.needsUpdate = true;
+    },
+  };
 }
 
 /* ---------- 구름 ---------- */
@@ -355,52 +450,68 @@ function makeClouds(scene) {
   return { group, update };
 }
 
-/* ---------- 떨어지는 낙엽 (단풍잎 모양) ---------- */
-function petalTexture() {
+/* ---------- 날리는 것: 🌿 민들레 홀씨·꽃잎 / 🍂 단풍잎 / ❄️ 눈송이 ---------- */
+function particleTexture(kind) {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d');
-  g.fillStyle = '#FFFFFF';
-  g.beginPath();
-  for (let i = 0; i < 10; i++) {   // 다섯 갈래 잎
-    const a = -Math.PI / 2 + (i / 10) * Math.PI * 2, r = i % 2 ? 11 : 27;
-    g.lineTo(32 + Math.cos(a) * r, 30 + Math.sin(a) * r);
+  if (kind === 'leaf') {   // 다섯 갈래 잎
+    g.fillStyle = '#FFFFFF';
+    g.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i / 10) * Math.PI * 2, r = i % 2 ? 11 : 27;
+      g.lineTo(32 + Math.cos(a) * r, 30 + Math.sin(a) * r);
+    }
+    g.closePath(); g.fill();
+    g.fillRect(31, 36, 2, 22);
+  } else {   // 동그랗고 보송보송한 홀씨 · 눈송이
+    const r = g.createRadialGradient(32, 32, 2, 32, 32, 28);
+    r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(kind === 'snow' ? 0.55 : 0.35, 'rgba(255,255,255,.85)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 64, 64);
   }
-  g.closePath(); g.fill();
-  g.fillRect(31, 36, 2, 22);
   return canvasTex(c);
 }
+const PARTICLES = {
+  green: { tex: 'fluff', size: 0.24, fall: 0.3, drift: 1.4, cols: ['#FFFFFF', '#FFF6D8', '#FCE4EC', '#FFFFFF'] },
+  autumn: { tex: 'leaf', size: 0.36, fall: 1, drift: 1, cols: ['#D9553B', '#E8763E', '#F2C14E', '#B9773E', '#C9452F'] },
+  winter: { tex: 'snow', size: 0.24, fall: 0.75, drift: 0.5, cols: ['#FFFFFF', '#F4F8FF', '#FFFFFF'] },
+};
 function makePetals(scene) {
   const n = reduceMotion ? 0 : isMobile ? 160 : 300;
-  if (!n) return { group: new THREE.Group(), update() {}, setCount() {} };
+  if (!n) return { group: new THREE.Group(), update() {}, setCount() {}, setSeason() {} };
   const pos = new Float32Array(n * 3), vel = [];
   const colors = new Float32Array(n * 3);
-  const cols = ['#D9553B', '#E8763E', '#F2C14E', '#B9773E', '#C9452F'].map(c => new THREE.Color(c));
   for (let i = 0; i < n; i++) {
     pos[i * 3] = rand(-30, 30); pos[i * 3 + 1] = rand(0, 9); pos[i * 3 + 2] = rand(-30, 30);
     vel.push([rand(0.3, 0.9), rand(0.3, 0.8), rand(0, 6)]);
-    const c = cols[i % cols.length];
-    colors.set([c.r, c.g, c.b], i * 3);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: 0.36, map: petalTexture(), transparent: true, depthWrite: false, vertexColors: true, alphaTest: 0.1,
-  }));
+  const mat = new THREE.PointsMaterial({ size: 0.3, transparent: true, depthWrite: false, vertexColors: true, alphaTest: 0.1 });
+  const pts = new THREE.Points(geo, mat);
   pts.frustumCulled = false;
   scene.add(pts);
-  let live = n;
+  const texs = {};
+  let live = n, P = PARTICLES.green;
   return {
     group: pts,
     setCount(k) { live = Math.max(0, Math.min(n, k)); geo.setDrawRange(0, live); },
+    setSeason(season) {
+      P = PARTICLES[season] || PARTICLES.green;
+      mat.map = texs[P.tex] || (texs[P.tex] = particleTexture(P.tex));
+      mat.size = P.size; mat.needsUpdate = true;
+      const cc = P.cols.map(c => new THREE.Color(c));
+      for (let i = 0; i < n; i++) { const c = cc[i % cc.length]; colors.set([c.r, c.g, c.b], i * 3); }
+      geo.attributes.color.needsUpdate = true;
+    },
     update(dt, t, center) {
       if (!pts.visible) return;
       for (let i = 0; i < live; i++) {
         const v = vel[i];
-        pos[i * 3] += (Math.sin(t * v[0] + v[2]) * 0.6 + 0.35) * dt;
-        pos[i * 3 + 1] -= v[1] * dt;
-        pos[i * 3 + 2] += Math.cos(t * v[0] * 0.7 + v[2]) * 0.4 * dt;
+        pos[i * 3] += (Math.sin(t * v[0] + v[2]) * 0.6 * P.drift + 0.35) * dt;
+        pos[i * 3 + 1] -= v[1] * P.fall * dt;
+        pos[i * 3 + 2] += Math.cos(t * v[0] * 0.7 + v[2]) * 0.4 * P.drift * dt;
         if (pos[i * 3 + 1] < 0) {
           pos[i * 3] = center.x + rand(-28, 28); pos[i * 3 + 1] = rand(6, 9); pos[i * 3 + 2] = center.z + rand(-28, 20);
         }
@@ -410,37 +521,63 @@ function makePetals(scene) {
   };
 }
 
-/* ---------- 고추잠자리 ---------- */
-function makeButterflies(scene) {
-  const group = new THREE.Group();
-  scene.add(group);
+/* ---------- 날아다니는 것: 🦋 나비 (봄·여름) · 고추잠자리 (가을) · 겨울엔 없음 ---------- */
+function makeFlyers(scene) {
+  const butterflies = new THREE.Group(), dragonflies = new THREE.Group();
+  scene.add(butterflies, dragonflies);
   const list = [];
-  const wingGeo = new THREE.CircleGeometry(0.16, 10);
+  const count = reduceMotion ? 0 : 8;
+  // 나비
+  const bWing = new THREE.CircleGeometry(0.16, 10);
+  const bCols = ['#F7D58B', '#F4B8C0', '#FFFFFF', '#BFE3F5'];
+  for (let i = 0; i < count; i++) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ color: bCols[i % 4], side: THREE.DoubleSide });
+    const l = new THREE.Mesh(bWing, mat), r = new THREE.Mesh(bWing, mat);
+    l.position.x = -0.14; r.position.x = 0.14;
+    const lw = new THREE.Group(), rw = new THREE.Group();
+    lw.add(l); rw.add(r);
+    g.add(lw, rw);
+    butterflies.add(g);
+    list.push({ g, lw, rw, axis: 'y', amp: 1.1, freq: 18, cx: rand(-25, 25), cz: rand(-25, 25), r: rand(2, 5), sp: rand(0.3, 0.7), off: rand(0, 6) });
+  }
+  // 고추잠자리
+  const dWing = new THREE.CircleGeometry(0.16, 10);
   const wingMat = new THREE.MeshBasicMaterial({ color: '#FFFFFF', transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
   const bodyGeo = new THREE.CylinderGeometry(0.025, 0.018, 0.42, 6);
-  for (let i = 0; i < (reduceMotion ? 0 : 8); i++) {
+  for (let i = 0; i < count; i++) {
     const g = new THREE.Group();
     const body = new THREE.Mesh(bodyGeo, new THREE.MeshBasicMaterial({ color: i % 3 ? '#D9452F' : '#E8763E' }));
     body.rotation.x = Math.PI / 2;
     g.add(body);
     const lw = new THREE.Group(), rw = new THREE.Group();
     for (const [grp, sx] of [[lw, -1], [rw, 1]]) for (const dz of [-0.05, 0.06]) {
-      const w = new THREE.Mesh(wingGeo, wingMat);
+      const w = new THREE.Mesh(dWing, wingMat);
       w.scale.set(1.4, 0.32, 1); w.position.set(sx * 0.2, 0, dz); w.rotation.x = -Math.PI / 2;
       grp.add(w);
     }
     g.add(lw, rw);
-    group.add(g);
-    list.push({ g, lw, rw, cx: rand(-25, 25), cz: rand(-25, 25), r: rand(2, 5), sp: rand(0.3, 0.7), off: rand(0, 6) });
+    dragonflies.add(g);
+    list.push({ g, lw, rw, axis: 'z', amp: 0.35, freq: 30, cx: rand(-25, 25), cz: rand(-25, 25), r: rand(2, 5), sp: rand(0.3, 0.7), off: rand(0, 6) });
   }
-  const update = (dt, t) => { if (!group.visible) return; list.forEach(b => {
-    const a = t * b.sp + b.off;
-    b.g.position.set(b.cx + Math.cos(a) * b.r, 1.2 + Math.sin(t * 2 + b.off) * 0.5, b.cz + Math.sin(a * 1.3) * b.r);
-    b.g.rotation.y = -a;
-    const f = Math.sin(t * 30 + b.off) * 0.35;
-    b.lw.rotation.z = f; b.rw.rotation.z = -f;
-  }); };
-  return { group, update };
+  let lite = false, season = 'green';
+  const paint = () => { butterflies.visible = !lite && season === 'green'; dragonflies.visible = !lite && season === 'autumn'; };
+  return {
+    setLite(on) { lite = on; paint(); },
+    setSeason(s) { season = s; paint(); },
+    get visible() { return butterflies.visible || dragonflies.visible; },
+    update(dt, t) {
+      if (!butterflies.visible && !dragonflies.visible) return;
+      list.forEach(b => {
+        if (!b.g.parent.visible) return;
+        const a = t * b.sp + b.off;
+        b.g.position.set(b.cx + Math.cos(a) * b.r, 1.2 + Math.sin(t * 2 + b.off) * 0.5, b.cz + Math.sin(a * 1.3) * b.r);
+        b.g.rotation.y = -a;
+        const f = Math.sin(t * b.freq + b.off) * b.amp;
+        b.lw.rotation[b.axis] = f; b.rw.rotation[b.axis] = -f;
+      });
+    },
+  };
 }
 
 /* ---------- 하트·이모지 터지는 효과 (이모지별 텍스처는 한 번만 만듦) ---------- */
@@ -502,8 +639,8 @@ export function buildEnvironment(scene, avoid) {
   const sky = makeSky();
   scene.add(sky);
 
-  // 땅
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(160, 64), new THREE.MeshToonMaterial({ map: grassTexture(), gradientMap }));
+  // 땅 (계절마다 풀밭 텍스처를 바꿈)
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(160, 64), new THREE.MeshToonMaterial({ map: grassTexture(getSeason()), gradientMap }));
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   group.add(ground);
@@ -541,7 +678,7 @@ export function buildEnvironment(scene, avoid) {
   ring.position.set(PLAZA.x, 0.03, PLAZA.z);
   group.add(ring);
 
-  // 가장자리 나무 숲 (경계)
+  // 가장자리 숲 (경계)
   const colliders = [];
   for (let i = 0; i < 46; i++) {
     const a = (i / 46) * Math.PI * 2 + rand(-0.04, 0.04);
@@ -554,9 +691,9 @@ export function buildEnvironment(scene, avoid) {
     const a = Math.random() * Math.PI * 2, r = rand(50, 75);
     group.add(tree(Math.cos(a) * r, Math.sin(a) * r, { kind: ['pine', 'pine', 'maple', 'ginkgo'][i % 4], s: rand(1.4, 2.2) }));
   }
-  // 입구 아치 너머 언덕
+  // 입구 너머 언덕
   for (let i = 0; i < 8; i++) {
-    const hill = mesh(new THREE.SphereGeometry(1, 20, 12), ['#B7AE66', '#C79A55', '#A9A55E', '#C4884A'][i % 4], rand(-120, 120), -rand(8, 14), -rand(90, 130));
+    const hill = mesh(new THREE.SphereGeometry(1, 20, 12), HILL[i % 4], rand(-120, 120), -rand(8, 14), -rand(90, 130));
     hill.scale.set(rand(25, 45), rand(18, 26), rand(20, 30));
     group.add(hill);
   }
@@ -567,7 +704,6 @@ export function buildEnvironment(scene, avoid) {
     [30, 4, 'maple'], [-28, -20, 'ginkgo'], [33, -20, 'pine'], [-8, -28, 'pine'], [8, -29, 'maple'],
     [-15, 12, 'maple'], [16, 14, 'persimmon'], [-22, -2, 'ginkgo'], [11, -22, 'persimmon'], [-12, -24, 'maple'],
   ];
-
   innerTrees.forEach(([x, z, k]) => {
     group.add(tree(x, z, { kind: k, s: rand(1, 1.3) }));
     colliders.push({ x, z, r: 0.7 });
@@ -575,7 +711,7 @@ export function buildEnvironment(scene, avoid) {
 
   // 덤불
   [[-5, 28], [12.5, 27.5], [-14, 8], [13, 3], [-3, -21], [3, -21], [-26, 12], [26, 10], [-20, -18], [28, -8]].forEach(([x, z], i) => {
-    group.add(bush(x, z, rand(0.9, 1.3), ['#B98A3E', '#C76B3C', '#93A35A'][i % 3]));
+    group.add(bush(x, z, rand(0.9, 1.3), i));
     colliders.push({ x, z, r: 0.9 });
   });
 
@@ -596,45 +732,70 @@ export function buildEnvironment(scene, avoid) {
     colliders.push({ x, z, r: 0.9 });
   });
 
-  // 허수아비 · 낙엽 더미 (풍선 대신)
+  // 입구의 허수아비(봄~가을), 겨울엔 광장 옆 크리스마스 트리 · 낙엽 더미(가을) / 눈 무더기(겨울)
   const updaters = [];
-  group.add(scarecrow(-6.2, 30.5, 0.5));
-  colliders.push({ x: -6.2, z: 30.5, r: 0.5 });
+  group.add(onlyIn(scarecrow(-6.2, 30.5, 0.5), 'green', 'autumn'));
+  colliders.push({ x: -6.2, z: 30.5, r: 0.6 });
+  const xmas = onlyIn(christmasTree(6.4, 14.6, 1), 'winter');
+  group.add(xmas);
+  colliders.push({ x: 6.4, z: 14.6, r: 1.2 });
+  updaters.push(t => {   // 전구 반짝이기 (겨울에만 계산)
+    if (!xmas.visible) return;
+    twinkle.forEach(b => { const k = 0.55 + 0.45 * Math.max(0, Math.sin(t * 2.6 + b.off)); b.mat.color.copy(b.base).multiplyScalar(k); });
+    xmas.userData.star.rotation.y = t * 0.8;
+  });
   [[3.9, 32.4, 1], [15.5, -7, 0.9], [24.5, -7, 0.9], [-7.5, 15.5, 0.8], [8.5, -5.2, 0.7]].forEach(([x, z, sc]) => {
-    group.add(leafPile(x, z, sc));
+    group.add(onlyIn(leafPile(x, z, sc), 'autumn'));
+    group.add(onlyIn(leafPile(x, z, sc * 1.1, true), 'winter'));
     colliders.push({ x, z, r: 0.6 * sc });
   });
 
-  scatterFlora(group, avoid);
+  const flora = scatterFlora(group, avoid);
   const clouds = makeClouds(group);
   const petals = makePetals(group);
-  const butterflies = makeButterflies(group);
+  const flyers = makeFlyers(group);
 
-  let mode = 'day';
-  return {
+  let mode = 'day', season = getSeason();
+  const env = {
     group, sky, colliders,
     get time() { return mode; },
+    get season() { return season; },
+    palette: () => SKIES[season][mode],
     /* 낮 · 노을 · 밤 */
     setTime(m) {
-      mode = TIMES[m] ? m : 'day';
-      const p = TIMES[mode];
+      mode = SKIES[season][m] ? m : 'day';
+      const p = SKIES[season][mode];
       sky.userData.setPalette(p);
       night.visible = p.lamps;
       return p;
     },
-    /* 느린 휴대폰: 1 = 꽃잎 절반, 2 = 구름·나비·꽃잎 끄기 */
+    /* 🌿 · 🍂 · ❄️ */
+    setSeason(s) {
+      season = SKIES[s] ? s : 'green';
+      ground.material.map = grassTexture(season);
+      ground.material.needsUpdate = true;
+      applySeasonal(season);
+      flora.setSeason(season);
+      petals.setSeason(season);
+      flyers.setSeason(season);
+      return env.setTime(mode);
+    },
+    /* 느린 휴대폰: 1 = 날리는 것 절반, 2 = 구름·나비·날리는 것 끄기 */
     setLite(level) {
       petals.setCount(level >= 2 ? 0 : level === 1 ? 80 : 300);
       petals.group.visible = level < 2;
-      clouds.group.visible = butterflies.group.visible = level < 2;
+      clouds.group.visible = level < 2;
+      flyers.setLite(level >= 2);
     },
     update(dt, t, center) {
       clouds.update(dt);
       petals.update(dt, t, center);
-      butterflies.update(dt, t);
+      flyers.update(dt, t);
       updaters.forEach(u => u(t));
     },
   };
+  env.setSeason(season);
+  return env;
 }
 
 export { updateBursts };
