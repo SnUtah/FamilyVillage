@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { isMobile, formatKDate, damp } from './util.js';
+import { isMobile, formatKDate, damp, clamp } from './util.js';
 import { buildEnvironment, spawnHearts, updateBursts, throwSprite, TIMES } from './world.js';
 import { setSeason as pickSeason } from './season.js';
 import { buildProps, MUSEUM_DOOR, BED } from './props.js';
@@ -159,11 +159,61 @@ export async function init({ character: c, onProgress = () => {} } = {}) {
   if (/debug/.test(location.hash)) window.__wv = { goTo: id => goTo(props.interactables.find(i => i.id === id)), takePhoto, enterMuseum, exitMuseum, cycleTime, startTour, stopTour, applyTime, state, props, flowerCount: () => props.flowerCount(), interact: id => interact(props.interactables.find(i => i.id === id)), npcVisible: id => !!props.houses.npc(id)?.root.visible, treeStage: () => props.familyTree.refresh().stage, current: () => current?.id || '', pos: () => [state.pos.x, state.pos.z], setSeason: s => pickSeason(s), season: () => env.season, stats: () => { let meshes = 0, vis = 0; scene.traverse(o => { if (o.isMesh || o.isSprite || o.isPoints || o.isLine) { meshes++; let v = true, p = o; while (p) { if (!p.visible) { v = false; break; } p = p.parent; } if (v) vis++; } }); const r = renderer.info; return { calls: r.render.calls, tris: r.render.triangles, geos: r.memory.geometries, tex: r.memory.textures, programs: r.programs?.length, objects: meshes, visible: vis, dpr: renderer.getPixelRatio(), level }; } };
 
   return {
-    themes: museum.themes, start, setCharacter, enterMuseum: () => enterMuseum(), letterSent, takePhoto: ids => takePhoto(true, ids),
+    themes: museum.themes, start, setCharacter, enterMuseum: () => enterMuseum(), letterSent, takePhoto: ids => takePhoto(true, ids), portrait,
     resize: () => { onResize(); snapCamera(); },
     startTour, stopTour, isTouring: () => !!tour,
     setTime: applyTime, getTime: () => timeMode, cycleTime,
   };
+}
+
+/* ---------- 🙋 캐릭터 카드 그림: 3D 캐릭터를 투명 배경으로 한 장씩 찍음 (시작 화면 · 나는 누구?) ---------- */
+const PW = 480, PH = 600;   // 두 배로 그린 뒤 반으로 줄여 가장자리를 부드럽게
+let pRig = null;
+const SRGB = new Uint8ClampedArray(256).map((_, i) => { const c = i / 255; return Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055)); });
+function portrait(look = {}) {
+  if (!renderer || lost) return null;
+  if (!pRig) {
+    const s = new THREE.Scene();
+    s.add(new THREE.HemisphereLight(TIMES.day.hemi, TIMES.day.ground, TIMES.day.hemiI));
+    const d = new THREE.DirectionalLight(TIMES.day.sun, TIMES.day.sunI);
+    d.position.set(2.5, 5, 6);
+    s.add(d);
+    const cam = new THREE.PerspectiveCamera(26, PW / PH, 0.1, 30);
+    cam.position.set(0, 1.0, 4.6); cam.lookAt(0, 0.8, 0);
+    pRig = { s, cam, rt: new THREE.WebGLRenderTarget(PW, PH), buf: new Uint8Array(PW * PH * 4), big: document.createElement('canvas') };
+    pRig.big.width = PW; pRig.big.height = PH;
+  }
+  const { s, cam, rt, buf, big } = pRig;
+  const ch = createCharacter({ type: 'family', ...look, shadows: false });
+  ch.root.rotation.y = 0.32;
+  ch.animate(0, 0, 0);
+  s.add(ch.root);
+  const prevRT = renderer.getRenderTarget(), prevCol = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
+  renderer.setRenderTarget(rt);
+  renderer.setClearColor(0x000000, 0);
+  renderer.clear();
+  renderer.render(s, cam);
+  renderer.readRenderTargetPixels(rt, 0, 0, PW, PH, buf);
+  renderer.setRenderTarget(prevRT);
+  renderer.setClearColor(prevCol, prevA);
+  s.remove(ch.root);
+  ch.root.traverse(o => o.geometry?.dispose());
+  // 위아래 뒤집기 + 화면 색(sRGB)으로
+  const img = new ImageData(PW, PH);
+  for (let y = 0; y < PH; y++) {
+    const src = (PH - 1 - y) * PW * 4, dst = y * PW * 4;
+    for (let x = 0; x < PW * 4; x += 4) {
+      img.data[dst + x] = SRGB[buf[src + x]]; img.data[dst + x + 1] = SRGB[buf[src + x + 1]]; img.data[dst + x + 2] = SRGB[buf[src + x + 2]];
+      img.data[dst + x + 3] = buf[src + x + 3];
+    }
+  }
+  big.getContext('2d').putImageData(img, 0, 0);
+  const out = document.createElement('canvas');
+  out.width = PW / 2; out.height = PH / 2;
+  const g = out.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(big, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
 }
 
 function start({ hint = true } = {}) {
@@ -207,7 +257,7 @@ function letterSent(letter) {
 function heartAtHouse(to) {
   const sp = props.houses.spot(to);
   if (!sp || state.mode !== 'out') return;
-  spawnHearts(scene, new THREE.Vector3(sp.npcX, 2.4, sp.z), 12);
+  spawnHearts(scene, new THREE.Vector3(sp.npcX, 2.4, sp.npcZ), 12);
   props.houses.npc(to)?.wave(1.6);
 }
 /* 💧 물 주기: 가까이 있으면 내 손에서 물방울이 날아가요 */
@@ -803,8 +853,10 @@ function cameraGoal(outPos, outLook, t = 0) {
     outPos.set(p.x, portrait ? 4.1 : 3.6, portrait ? 9.6 : 8.4);
     outLook.set(p.x, portrait ? 2.45 : 2.7, -3.2);
   } else if (portrait) {
-    outPos.set(p.x, 14.5, p.z + 14.5);
-    outLook.set(p.x, 0.6, p.z - 3.5);
+    // 가족 집 길(광장 북쪽)에 들어서면 카메라가 살짝 다가가 집 정면이 크게 보임
+    const k = clamp((-p.z - 4) / 4, 0, 1);
+    outPos.set(p.x, 14.5 - k * 4, p.z + 14.5 - k * 3.5);
+    outLook.set(p.x, 0.6 + k * 0.7, p.z - 3.5 + k * 0.3);
   } else {
     outPos.set(p.x, 10.5, p.z + 13.5);
     outLook.set(p.x, 1.2, p.z - 1.5);
@@ -819,6 +871,7 @@ function updateCamera(dt, t) {
   camLook.x = damp(camLook.x, goalLook.x, ll, dt); camLook.y = damp(camLook.y, goalLook.y, ll, dt); camLook.z = damp(camLook.z, goalLook.z, ll, dt);
   camera.position.copy(camPos);
   camera.lookAt(camLook);
+  if (state.camOverride) { camera.position.copy(state.camOverride.pos); camera.lookAt(state.camOverride.look); }   // #debug 전용 (위에서 내려다보기 등)
   env.sky.position.copy(camera.position);
 }
 

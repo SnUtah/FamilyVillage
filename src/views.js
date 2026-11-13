@@ -376,7 +376,7 @@ export function lookView() {
     const box = root.querySelector('.look-box');
     const render = () => {
       box.innerHTML = `
-        <div class="look-preview">${avatarHTML(look, 'big')}</div>
+        <div class="look-preview">${(() => { const pic = hooks.portrait?.(look); return pic ? `<img class="look-img" src="${pic}" alt="">` : avatarHTML(look, 'big'); })()}</div>
         <b>옷 색</b><div class="sw">${PALETTE.map(c => `<button type="button" class="sw-c${look.outfit === c ? ' on' : ''}" data-k="outfit" data-v="${c}" style="--c:${c}" aria-label="옷 색 ${c}"></button>`).join('')}</div>
         <b>머리 색</b><div class="sw">${HAIRS.map(c => `<button type="button" class="sw-c${look.hair === c ? ' on' : ''}" data-k="hair" data-v="${c}" style="--c:${c}" aria-label="머리 색 ${c}"></button>`).join('')}</div>
         <b>머리 모양</b><div class="seg"><button type="button" data-k="longHair" data-v="0" class="${!look.longHair ? 'on' : ''}">짧은 머리</button><button type="button" data-k="longHair" data-v="1" class="${look.longHair ? 'on' : ''}">긴 머리</button></div>
@@ -406,10 +406,14 @@ export function lookView() {
 export function showLook() { openView('🎨 내 캐릭터 꾸미기', lookView()); }
 
 /* ---------- 🙋 나는 누구예요? (시작 화면과 메뉴에서) ---------- */
-export function whoHTML(selected = meId()) {
-  return `<div class="who-grid">
-    ${members().map(m => `<button type="button" class="who-btn${selected === m.id ? ' on' : ''}" data-id="${esc(m.id)}">${avatarHTML(m.look)}<b>${esc(m.role || m.name)}</b><small>${esc(m.name)}</small></button>`).join('')}
-    <button type="button" class="who-btn guest${selected === 'guest' ? ' on' : ''}" data-id="guest"><span class="guest-ic">👀</span><b>구경만</b><small>손님</small></button>
+/* 3D로 찍은 캐릭터 그림 (game.portrait) — 없으면 그림 대신 간단한 아바타 */
+const portraits = new Map();
+export function setPortrait(id, url) { if (url) portraits.set(id, url); }
+export const picHTML = (id, look) => portraits.has(id) ? `<img class="char-img" src="${portraits.get(id)}" alt="" draggable="false">` : avatarHTML(look, 'big');
+export function whoHTML(selected = meId(), { carousel = false } = {}) {
+  return `<div class="who-grid${carousel ? ' carousel' : ''}">
+    ${members().map(m => `<button type="button" class="who-btn${selected === m.id ? ' on' : ''}" data-id="${esc(m.id)}" style="--c:${esc(m.look.outfit || '#8FB8DE')}" aria-label="${esc(m.role || m.name)}"><span class="char-pic">${picHTML(m.id, m.look)}</span><b>${esc(m.role || m.name)}</b><small>${esc(m.name)}</small></button>`).join('')}
+    <button type="button" class="who-btn guest${selected === 'guest' ? ' on' : ''}" data-id="guest" style="--c:#C9BBA9" aria-label="손님으로 구경만"><span class="char-pic"><span class="guest-ic">👀</span></span><b>구경만</b><small>손님</small></button>
   </div>`;
 }
 export function whoView(onPick) {

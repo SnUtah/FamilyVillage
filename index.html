@@ -24,6 +24,9 @@
 <!-- 휴대폰 '홈 화면에 추가' 아이콘 (할머니·할아버지도 앱처럼 한 번에 열 수 있게) -->
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="가족 마을" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -38,7 +41,7 @@
   <!-- 📖 글로 보기: 3D 없이 한 페이지로 보는 가족 마을 (내용은 textview.js가 채움) -->
   <div id="textview" role="document" aria-label="글로 보기"></div>
 
-  <!-- 시작 화면 (뒤로 마을이 천천히 돌아가며 보여요): (암호를 걸었으면 🔒) → 🙋 나는 누구 → 입장 · ⚙️ = 가족 암호 설정 -->
+  <!-- 시작 화면 (뒤로 마을이 천천히 돌아가며 보여요): (암호를 걸었으면 🔒) → 🙋 캐릭터 고르기 → 입장 · ⚙️ = 가족 암호 설정 -->
   <section id="intro">
     <div class="intro-card">
       <button class="intro-gear" id="btn-lock-set" type="button" aria-label="가족 암호 설정">⚙️</button>
@@ -57,13 +60,9 @@
         <p class="muted lock-hint" id="lock-hint"></p>
       </form>
       <div id="who" hidden>
-        <div class="intro-label">🙋 누구세요?</div>
-        <div id="who-grid"></div>
-      </div>
-      <div class="char-line" id="me-line" hidden>
-        <div id="me-avatar"></div>
-        <div class="char-text"><b id="me-name"></b><span id="me-sub"></span></div>
-        <button class="btn-reroll" id="btn-change" type="button">바꾸기</button>
+        <div class="intro-label">🙋 누구로 들어갈까요? <span class="swipe-hint">옆으로 넘겨 보세요 →</span></div>
+        <div id="who-grid" role="group" aria-label="캐릭터 고르기"></div>
+        <div class="who-foot"><span id="who-note"></span><button class="btn-reroll" id="btn-look" type="button" hidden>🎨 꾸미기</button></div>
       </div>
       <button class="btn-primary" id="btn-enter" disabled>마을 준비 중…</button>
       <div class="btn-row">

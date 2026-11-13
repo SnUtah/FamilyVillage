@@ -446,6 +446,33 @@ export async function share() {
   copy(data.url, '주소가 복사되었어요');
 }
 
+/* ---------- 📱 앱으로 설치 (홈 화면에 추가) ----------
+   안드로이드 크롬: 설치 창을 바로 띄움 · 아이폰/카카오톡 안 브라우저: 방법을 알려 줌 */
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+addEventListener('appinstalled', () => { installEvt = null; toast('📱 홈 화면에 가족 마을이 생겼어요!', 3200); });
+export const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+export async function installApp() {
+  if (installEvt) {
+    const e = installEvt; installEvt = null;
+    try { e.prompt(); await e.userChoice; } catch {}
+    return;
+  }
+  const ua = navigator.userAgent;
+  const inApp = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const steps = inApp
+    ? ['오른쪽 아래(또는 위) <b>⋮ · 공유</b> 버튼', `<b>${ios ? 'Safari로 열기' : '다른 브라우저로 열기'}</b>`, ios ? '열린 Safari에서 아래 순서대로' : '열린 크롬에서 아래 순서대로']
+    : [];
+  const how = ios
+    ? ['화면 아래 <b>공유 버튼</b> <span class="kbd">⬆︎</span> 누르기', '<b>홈 화면에 추가</b> 고르기', '오른쪽 위 <b>추가</b>']
+    : ['오른쪽 위 <b>⋮</b> 메뉴 누르기', '<b>앱 설치</b> 또는 <b>홈 화면에 추가</b>', '<b>설치</b> 누르기'];
+  openModal('📱 앱으로 설치', `
+    <div class="card center"><div style="font-size:44px">🏡</div><b>홈 화면에 가족 마을 아이콘을 만들어요</b>
+      <p class="muted" style="margin:6px 0 0">다음부터는 아이콘만 누르면 바로 열려요. 인터넷이 잠깐 끊겨도 열리고, 쓴 글은 연결되면 보내져요</p></div>
+    ${steps.length ? `<div class="card"><b>먼저, 지금 앱 안의 브라우저라면</b><ol class="howto">${steps.map(s => `<li>${s}</li>`).join('')}</ol></div>` : ''}
+    <div class="card"><b>${ios ? '아이폰 (Safari)' : '안드로이드 (크롬·삼성 인터넷)'}</b><ol class="howto">${how.map(s => `<li>${s}</li>`).join('')}</ol></div>`);
+}
+
 /* ---------- ☰ 바로가기 메뉴 ---------- */
 const MENU_GROUPS = [['', '🌳 마을 곳곳'], ['me', '🙋 나'], ['set', '⚙️ 보기 · 설정']];
 export function menuView(items) {

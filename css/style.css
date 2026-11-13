@@ -386,6 +386,8 @@ textarea.field { min-height: 110px; resize: none; }
 
 /* 바로가기 메뉴 */
 .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.howto { margin: 8px 0 0; padding-left: 22px; line-height: 1.9; }
+.kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 13px; }
 .menu-sec { margin: 18px 2px 0; font-size: 15px; font-weight: 400; color: var(--ink-soft); font-family: 'Jua', 'Gowun Dodum', sans-serif; }
 .menu-grid.small { grid-template-columns: repeat(2, 1fr); }
 .menu-item.small { flex-direction: row; justify-content: flex-start; padding: 12px 14px; gap: 10px; text-align: left; }
@@ -451,7 +453,7 @@ body.reading .hud-top, body.reading #joy, body.reading .actions, body.reading #m
 .tv-foot { text-align: center; padding: 30px 0 10px; color: var(--ink-soft); font-size: 13px; border-top: 1px dashed var(--line); }
 
 /* 3D가 안 되는 휴대폰: 3D 전용 버튼 숨김 */
-body.no3d .intro-label, body.no3d .char-line, body.no3d #btn-text, body.no3d .intro-help,
+body.no3d .swipe-hint, body.no3d #btn-look, body.no3d #btn-text, body.no3d .intro-help,
 body.no3d #btn-shot, body.no3d #joy, body.no3d .actions { display: none !important; }
 
 /* 시작 전에는 조작 버튼 숨김 */
@@ -551,6 +553,23 @@ span.avatar { display: inline-block; vertical-align: middle; }
 
 /* 🙋 나는 누구예요? */
 .who-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 14px; }
+/* 🙋 시작 화면: 캐릭터 카드를 옆으로 넘겨 고르기 */
+.swipe-hint { margin-left: 4px; font-size: 11.5px; opacity: .75; }
+.who-grid.carousel { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; touch-action: pan-x; overscroll-behavior-x: contain;
+  margin: 0 -22px 6px; padding: 6px 22px 10px; scroll-padding: 0 22px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.who-grid.carousel::-webkit-scrollbar { display: none; }
+.carousel .who-btn { position: relative; flex: 0 0 34%; max-width: 132px; min-height: 0; padding: 8px 4px 10px; scroll-snap-align: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 26%, #fff) 0%, #fff 78%); border-color: color-mix(in srgb, var(--c) 35%, var(--line)); }
+.carousel .who-btn.on { border-color: var(--c); box-shadow: 0 6px 16px color-mix(in srgb, var(--c) 45%, transparent); transform: translateY(-2px); }
+.carousel .who-btn.on::after { content: '✓'; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--c); color: #fff; font-size: 13px; line-height: 22px; font-weight: 700; }
+.char-pic { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 104px; }
+.char-img { width: 84px; height: 105px; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+.who-grid:not(.carousel) .char-pic { height: 74px; }
+.who-grid:not(.carousel) .char-img { width: 60px; height: 75px; }
+.char-pic .avatar.big { margin-bottom: 4px; }
+.char-pic .guest-ic { font-size: 40px; line-height: 1; margin-bottom: 26px; }
+.who-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 14px; min-height: 36px; font-size: 12.5px; color: var(--ink-soft); text-align: left; word-break: keep-all; line-height: 1.45; }
 .who-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 16px; background: #fff; border: 2px solid var(--line); min-height: 104px; transition: transform .12s; }
 .who-btn:active { transform: scale(.96); }
 .who-btn b { font-size: 14px; }
@@ -558,9 +577,7 @@ span.avatar { display: inline-block; vertical-align: middle; }
 .who-btn.on { border-color: var(--rose); background: var(--on); }
 .who-btn .avatar { animation: none; }
 .guest-ic { font-size: 34px; line-height: 66px; }
-#me-avatar { flex: none; }
-#me-avatar .avatar.big { zoom: 1; }
-.char-text span { display: block; }
+
 
 /* 공통 조각 */
 .who-chip { --c: #E6D5C6; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 13px; background: color-mix(in srgb, var(--c) 22%, #fff); border: 1px solid color-mix(in srgb, var(--c) 55%, #fff); white-space: nowrap; }
@@ -673,6 +690,7 @@ span.avatar { display: inline-block; vertical-align: middle; }
 /* 🎨 꾸미기 */
 .look-preview { display: grid; place-items: center; padding: 18px 0 8px; }
 .look-preview .avatar.big { zoom: 2; }
+.look-img { width: 128px; height: 160px; object-fit: contain; }
 .look-box > b { display: block; margin: 14px 0 6px; font-size: 14px; }
 .sw { display: flex; flex-wrap: wrap; gap: 8px; }
 .sw-c { --c: #ccc; width: 40px; height: 40px; border-radius: 50%; background: var(--c); border: 3px solid #fff; box-shadow: 0 0 0 1px var(--line); }

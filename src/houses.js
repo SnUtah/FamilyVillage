@@ -16,20 +16,19 @@ import { list } from './store.js';
    - 집 앞 가족은 걸어 다니지 않아요 (렉 방지). 다가가면 나를 바라보고 손을 흔들며 말을 걸어요
    - 말풍선 = 그 사람이 오늘 남긴 답 · 최근 편지 · config의 한마디
    ========================================================= */
-export const STREET = { side: 5.0, front: 2.35, z0: -6.5, z1: -17.5 };
-export const TREE = { x: 0, z: -20.2, r: 1.4 };
+export const ROW = { z: -14, gap: 6.5 };   // 집 한 줄 (집 가운데 z) · 집 사이 간격
+export const TREE = { x: 0, z: -15.5, r: 1.4 };
 
 const darken = (hex, k = 0.25) => '#' + new THREE.Color(hex).lerp(new THREE.Color('#5A4038'), k).getHexString();
 const cut = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
-/* 집 자리: 왼쪽·오른쪽 번갈아, 오른쪽은 반 칸 어긋나게 */
+/* 집 자리: 가족 나무를 가운데 두고 왼쪽→오른쪽 차례로 가로 한 줄 (모두 화면 쪽을 봄)
+   예) 5명: 할머니 · 아빠 · 엄마 | 🌱 | 첫째 · 막내 */
 export function houseSpots(n) {
-  const nl = Math.ceil(n / 2);
-  const gap = Math.min(5.5, nl > 1 ? (STREET.z0 - STREET.z1) / (nl - 1) : 5.5);
+  const L = Math.ceil(n / 2);
   return Array.from({ length: n }, (_, i) => {
-    const side = i % 2 === 0 ? -1 : 1, slot = Math.floor(i / 2);
-    const z = STREET.z0 - slot * gap - (side > 0 ? gap / 2 : 0);
-    return { side, z, x: side * STREET.side, npcX: side * STREET.front };
+    const x = i < L ? -ROW.gap * (L - i) : ROW.gap * (i - L + 1);
+    return { x, z: ROW.z, npcX: x, npcZ: ROW.z + 2.6 };
   });
 }
 
@@ -79,7 +78,7 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
     const sp = spots[i];
     const col = m.look.outfit;
     const g = new THREE.Group();
-    // 앞이 +z인 통나무집을 만든 뒤 골목 쪽으로 돌림
+    // 앞이 +z(화면 쪽)인 통나무집
     const wall = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.9, 2.4), logMaterial());
     wall.position.y = 0.95; wall.castShadow = wall.receiveShadow = true;
     g.add(wall);
@@ -172,31 +171,29 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
         fl.position.set(Math.cos(a) * 0.15, 1.17, Math.sin(a) * 0.15);
         cake.add(fl);
       }
-      cake.position.set(-0.2, 0, 2.3);
+      cake.position.set(-1.35, 0, 2.75);
       g.add(cake);
     }
     g.position.set(sp.x, 0, sp.z);
-    g.rotation.y = sp.side < 0 ? Math.PI / 2 : -Math.PI / 2;
     group.add(g);
-    boxes.push({ minX: sp.x - 1.25, maxX: sp.x + 1.25, minZ: sp.z - 1.45, maxZ: sp.z + 1.45 });
+    boxes.push({ minX: sp.x - 1.45, maxX: sp.x + 1.45, minZ: sp.z - 1.3, maxZ: sp.z + 1.3 });
     // 우체통·케이크 자리 (집 기준 → 월드)
     const toWorld = (lx, lz) => { const v = new THREE.Vector3(lx, 0, lz).applyAxisAngle(new THREE.Vector3(0, 1, 0), g.rotation.y); return { x: sp.x + v.x, z: sp.z + v.z }; };
     const mbw = toWorld(1.15, 1.85); colliders.push({ x: mbw.x, z: mbw.z, r: 0.3 });
-    if (cake) { const cw = toWorld(-0.2, 2.3); colliders.push({ x: cw.x, z: cw.z, r: 0.45 }); }
+    if (cake) { const cw = toWorld(-1.35, 2.75); colliders.push({ x: cw.x, z: cw.z, r: 0.45 }); }
 
     // 집 앞의 그 사람
     const npc = createCharacter({ type: 'family', ...m.look, shadows: false });
     npc.root.userData.dynamic = true;
-    npc.root.position.set(sp.npcX, 0, sp.z + (sp.side < 0 ? 0.55 : -0.55));
-    npc.root.rotation.y = sp.side < 0 ? Math.PI / 2 : -Math.PI / 2;
+    npc.root.position.set(sp.npcX, 0, sp.npcZ);   // 문 앞에서 화면 쪽을 보고 서 있음
     if (birthdayIds.has(m.id)) npc.setParty(true);
     group.add(npc.root);
     const npcCol = { x: npc.root.position.x, z: npc.root.position.z, r: 0.45 };
     colliders.push(npcCol);
 
     const isMe = m.id === meId();
-    const it = addInteract(`house:${m.id}`, `${m.role || m.name}네 집`, m.emoji || '🏠', `${m.role || m.name}네 집 구경`, sp.npcX, sp.z, 2.5, 3.6);
-    it.label.position.x = sp.x;
+    const it = addInteract(`house:${m.id}`, `${m.role || m.name}네 집`, m.emoji || '🏠', `${m.role || m.name}네 집 구경`, sp.npcX, sp.npcZ, 2.5, 3.9);
+    it.label.position.z = sp.z + 1.1;   // 이름표는 지붕 앞쪽 위에
     it.member = m.id;
     houses.push({ m, sp, g, npc, npcCol, it, flagPivot, badge: null, badgeText: '', bubbles: new Map(), bub: null, bubT: 0, sayT: 1 + i, sayIdx: 0, near: false, isMe });
   });

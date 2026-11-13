@@ -9,7 +9,8 @@ import { villageName, sinceDays, visitorsOn, upcoming, ddayText, questionOn, ans
 /* =========================================================
    상호작용 오브젝트 & 건물
    ========================================================= */
-export const MUSEUM_DOOR = { x: 20, z: -8.4, r: 1.7 };
+const MUSEUM_SHIFT = { x: 1, z: 28.5 };   // 사진관 = 입구 오른쪽 (정면이 화면 쪽). 원래 좌표에서 이만큼 옮김
+export const MUSEUM_DOOR = { x: 20 + MUSEUM_SHIFT.x, z: -8.4 + MUSEUM_SHIFT.z, r: 1.7 };
 export const BED = { x: 8.2, z: 25.5, r: 1.8 };   // 🌷 가족 정원 (우체통 옆)
 const cutText = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 /* 캔버스 글자를 maxW 폭에 맞춰 여러 줄로 (띄어쓰기 없는 긴 글은 글자 단위로) */
@@ -310,11 +311,11 @@ export function buildProps(scene) {
     const q = facePlane(textCanvas('?', { w: 256, h: 256, size: 190, bg: '#F2C14E', radius: 128, color: '#FFFFFF' }), 0.9, 0.9);
     q.position.set(0, 0.6, 0.51);
     g.add(q);
-    g.position.set(-19.5, 0, -11.5);
-    g.rotation.y = 0.6;
+    g.position.set(-20, 0, -1.5);
+    g.rotation.y = 1.25;   // 광장 쪽을 봄
     group.add(g);
-    colliders.push({ x: -19.5, z: -11.5, r: 1.5 });
-    addInteract('quiz', '가족 퀴즈', '❓', '퀴즈 풀기', -19.5, -11.5, 3.2, 4.4);
+    colliders.push({ x: -20, z: -1.5, r: 1.5 });
+    addInteract('quiz', '가족 퀴즈', '❓', '퀴즈 풀기', -20, -1.5, 3.2, 4.4);
   }
 
   /* ---------- 🔥 광장 모닥불 (고구마를 던져 넣으면 노릇노릇) ---------- */
@@ -408,19 +409,20 @@ export function buildProps(scene) {
     };
   }
 
-  /* ---------- 🏘️ 가족 집 골목 + 🌱 함께 키우는 나무 (골목 끝, 뒤로 꽃 울타리) ---------- */
+  /* ---------- 🏘️ 가족 집 길 (가로 한 줄) + 🌱 가운데 함께 키우는 나무 + 뒤로 꽃 울타리 ---------- */
   {
     const g = new THREE.Group();
-    // 뒤쪽 덤불 울타리 (계절 따라 초록 → 단풍 → 눈)
-    for (let i = 0; i < 9; i++) {
-      const hx = -6 + i * 1.5;
-      const h = mesh(new THREE.IcosahedronGeometry(0.9, 1), bushMat(i), hx, 0.8, -22.3);
+    // 집 줄 뒤쪽 덤불 울타리 (계절 따라 초록 → 단풍 → 눈)
+    const hedgeGeo = new THREE.IcosahedronGeometry(0.9, 1), budGeo = new THREE.IcosahedronGeometry(0.18, 0);
+    for (let i = 0; i < 31; i++) {
+      const hx = -22.5 + i * 1.5;
+      const h = mesh(hedgeGeo, bushMat(i), hx, 0.8, -18.6);
       h.scale.set(1, 1.1, 0.8);
       g.add(h);
-      g.add(mesh(new THREE.IcosahedronGeometry(0.18, 0), flowerMat(i), hx + 0.3, 1.4, -21.6));
+      if (i % 2 === 0) g.add(mesh(budGeo, flowerMat(i), hx + 0.3, 1.4, -17.9));
     }
     group.add(g);
-    boxes.push({ minX: -7, maxX: 7, minZ: -23.5, maxZ: -21.5 });
+    boxes.push({ minX: -23.5, maxX: 23.5, minZ: -19.6, maxZ: -17.6 });
   }
   const houses = buildHouses({ group, colliders, boxes, addInteract, updaters });
   const familyTree = buildFamilyTree({ group, colliders, addInteract, updaters });
@@ -479,7 +481,8 @@ export function buildProps(scene) {
     // 사진 찍는 동안엔 이름표를 숨겨서 사진이 깔끔하게 · 먼 이름표는 흐려지다 사라짐 (멀리서 봐도 화면이 덜 복잡하게)
     interactables.forEach(it => {
       const d = playerPos ? Math.hypot(playerPos.x - it.pos.x, playerPos.z - it.pos.z) : 0;
-      it.label.visible = !posing && d < LABEL_FAR;
+      const behind = playerPos && it.pos.z > playerPos.z + 7;   // 카메라와 나 사이(화면 아래쪽)는 크게 가려서 숨김
+      it.label.visible = !posing && d < LABEL_FAR && !behind;
       it.label.material.opacity = clamp((LABEL_FAR - d) / 9, 0, 1);
       it.label.position.y = it.baseY + Math.sin(t * 2 + it.off) * 0.12;
     });
@@ -492,6 +495,7 @@ export function buildProps(scene) {
 function buildMuseumExterior(group, colliders, boxes, updaters) {
   const W = window.FAMILY;
   const g = new THREE.Group();
+  const c0 = colliders.length;
   const cx = 20, front = -10.2; // 정면 벽 z
   const cream = '#F1E0C2', white = '#FFF8EC', rose = '#B5452F';
   // 기단
@@ -566,8 +570,11 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
       g.add(w);
     }
   }
+  // 아래 좌표는 원래 자리 기준 → 통째로 옮김 (부딪힘 자리도 같이)
+  g.position.set(MUSEUM_SHIFT.x, 0, MUSEUM_SHIFT.z);
   group.add(g);
+  for (let i = c0; i < colliders.length; i++) { colliders[i].x += MUSEUM_SHIFT.x; colliders[i].z += MUSEUM_SHIFT.z; }
   heart.userData.dynamic = glow.userData.dynamic = true;
   updaters.push(t => { heart.position.y = 7.5 + Math.sin(t * 2) * 0.06; glow.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; });
-  boxes.push({ minX: 12.3, maxX: 27.7, minZ: -22.2, maxZ: -9.0 });
+  boxes.push({ minX: 12.3 + MUSEUM_SHIFT.x, maxX: 27.7 + MUSEUM_SHIFT.x, minZ: -22.2 + MUSEUM_SHIFT.z, maxZ: -9.0 + MUSEUM_SHIFT.z });
 }

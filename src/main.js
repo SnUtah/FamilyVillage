@@ -4,7 +4,7 @@ import * as Game from './game.js';
 import { openTextView } from './textview.js';
 import { formatKDate, photoThemes, buzz, isDemoClock, dayKey, josa } from './common.js';
 import { refresh, add, isUnlocked, checkCode, loadLock, lockInfo } from './store.js';
-import { villageName, sinceDays, todayEvents, me, meId, setMe, isGuest, callName, unreadForMe, visitedOn } from './family.js';
+import { villageName, sinceDays, todayEvents, me, meId, setMe, isGuest, callName, unreadForMe, visitedOn, members } from './family.js';
 import { sound } from './sound.js';
 import { getSeason, nextSeason, SEASON_INFO } from './season.js';
 
@@ -34,6 +34,12 @@ if (window.visualViewport) {
   vv.addEventListener('scroll', upd);
 }
 
+/* ---------- 📱 앱처럼: 홈 화면에 설치하면 인터넷이 끊겨도 열리게 (인터넷 주소에서만, 한 파일 버전 제외) ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:' && document.querySelector('link[rel="manifest"]')) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+if (UI.isInstalled()) document.documentElement.classList.add('installed');
+
 /* ---------- 시작 화면 ---------- */
 const title = villageName();
 document.title = title;
@@ -56,7 +62,7 @@ let game = null, started = false, lockReady = false;
 /* ---------- (🔒 암호가 걸려 있으면) → 🙋 → 입장 ---------- */
 function paintSteps() {
   if (!lockReady) {   // 암호가 걸려 있는지 확인 중 (시트 연결 시 잠깐)
-    $('#lock').hidden = $('#who').hidden = $('#me-line').hidden = true;
+    $('#lock').hidden = $('#who').hidden = true;
     if (ready) { $('#btn-enter').disabled = true; $('#btn-enter').textContent = '가족 마을 확인 중…'; }
     return;
   }
@@ -64,34 +70,55 @@ function paintSteps() {
   const hint = lockInfo().hint;
   $('#lock-hint').textContent = hint ? `힌트: ${hint}` : '';
   $('#lock').hidden = unlocked;
-  $('#who').hidden = !unlocked || !!chosen;
-  $('#me-line').hidden = !unlocked || !chosen;
+  $('#who').hidden = !unlocked;
   $('.btn-row').hidden = !unlocked;
-  if (unlocked && !chosen) $('#who-grid').innerHTML = V.whoHTML('');
-  bindWho();
-  if (unlocked && chosen) {
-    const look = V.currentLook();
-    $('#me-avatar').innerHTML = UI.avatarHTML(look, 'big');
-    $('#me-name').textContent = isGuest() ? '손님으로 구경해요' : `${josa(callName(chosen), '으로/로')} 들어가요`;
-    $('#me-sub').textContent = isGuest() ? '편지는 쓸 수 있고, 질문·하트·물 주기는 가족만 해요' : '편지·답·하트가 이 이름으로 남아요';
-  }
+  if (unlocked) paintWho(chosen);
+  $('#who-note').textContent = !chosen ? '나를 골라 주세요. 이 휴대폰이 기억해요'
+    : isGuest() ? '손님은 편지만 쓸 수 있어요 (질문·하트·물 주기는 가족만)' : '편지·답·하트가 이 이름으로 남아요';
+  $('#btn-look').hidden = !unlocked || !chosen || isGuest() || !game;
   const btn = $('#btn-enter');
   if (!ready) return;
   btn.disabled = !unlocked || !chosen;
-  btn.textContent = !unlocked ? '🔒 가족 암호를 넣어 주세요' : !chosen ? '🙋 나를 골라 주세요' : game ? '마을에 들어가기 🏡' : '📖 글로 보기';
+  btn.textContent = !unlocked ? '🔒 가족 암호를 넣어 주세요' : !chosen ? '🙋 캐릭터를 골라 주세요'
+    : !game ? '📖 글로 보기' : isGuest() ? '손님으로 들어가기 🏡' : `${josa(callName(chosen), '으로/로')} 들어가기 🏡`;
 }
-function bindWho() {
-  document.querySelectorAll('#who-grid .who-btn').forEach(b => b.onclick = () => {
-    buzz(10); sound.sfx('pop');
-    setMe(b.dataset.id);
+/* 🙋 캐릭터 카드: 한 번 그려 두고 고른 것만 표시 (옆으로 넘긴 자리 유지) */
+function paintWho(chosen) {
+  const grid = $('#who-grid');
+  if (!grid.firstElementChild) {
+    grid.innerHTML = V.whoHTML(chosen, { carousel: true });
+    grid.querySelectorAll('.who-btn').forEach(b => b.onclick = () => {
+      buzz(10); sound.sfx('pop');
+      setMe(b.dataset.id);
+      b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    });
+    requestAnimationFrame(() => grid.querySelector('.who-btn.on')?.scrollIntoView({ inline: 'center', block: 'nearest' }));
+  }
+  grid.querySelectorAll('.who-btn').forEach(b => { const on = b.dataset.id === chosen; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+}
+/* 3D 캐릭터 그림을 찍어 카드에 넣기 (마을이 준비된 뒤, 모습을 바꿨을 때) */
+const portraitKeys = new Map();
+function paintPortraits(ids) {
+  if (!game?.portrait) return;
+  const list = ids ? members().filter(m => ids.includes(m.id)) : members();
+  list.forEach(m => {
+    const key = JSON.stringify(m.look);
+    if (portraitKeys.get(m.id) === key) return;   // 모습이 그대로면 다시 안 찍음
+    portraitKeys.set(m.id, key);
+    const url = game.portrait(m.look);
+    V.setPortrait(m.id, url);
+    const card = document.querySelector(`#who-grid .who-btn[data-id="${CSS.escape(m.id)}"]`);
+    if (card && url) { card.querySelector('.char-pic').innerHTML = V.picHTML(m.id, m.look); card.style.setProperty('--c', m.look.outfit || '#8FB8DE'); }
   });
 }
+addEventListener('family:look', () => { const id = meId(); if (id && !isGuest()) setTimeout(() => paintPortraits([id]), 0); });
+addEventListener('family:data', () => { if (!started) paintPortraits(); });   // 다른 가족이 모습을 바꿨으면
 addEventListener('family:me', () => {
   if (isGuest()) { try { if (!localStorage.getItem('family-guest-look')) localStorage.setItem('family-guest-look', JSON.stringify(V.currentLook())); } catch {} }
   game?.setCharacter(V.currentLook());
   paintSteps();
 });
-$('#btn-change').onclick = () => { $('#who-grid').innerHTML = V.whoHTML(meId()); bindWho(); $('#who').hidden = false; $('#me-line').hidden = true; };
+$('#btn-look').onclick = () => { buzz(8); V.showLook(); };
 $('#lock').onsubmit = async e => {
   e.preventDefault();
   const inp = $('#lock-in'), btn = $('#lock-btn');
@@ -190,10 +217,12 @@ async function boot() {
   }
   clearTimeout(watchdog);
   if (!game) document.body.classList.add('no3d');
+  else paintPortraits();
   setLoad(100);
   ready = true;
   V.hooks.onSent = game?.letterSent || null;
   V.hooks.takePhoto = game?.takePhoto || null;
+  V.hooks.portrait = game?.portrait || null;   // 꾸미기 미리보기도 3D 캐릭터로
 
   /* ---------- 입장 ---------- */
   const bgm = $('#bgm');
@@ -251,6 +280,7 @@ async function boot() {
       { g: 'set', emoji: '🚶', label: '자동 투어', go: () => { UI.closeModal(); game.startTour(); } },
     ] : []),
     { g: 'set', emoji: '🔒', label: '가족 암호', go: openLockSettings },
+    ...(UI.isInstalled() ? [] : [{ g: 'set', emoji: '📱', label: '앱으로 설치', go: UI.installApp }]),
   ];
   $('#btn-menu').onclick = () => UI.showMenu(MENU());
   $('#btn-text-hud').onclick = () => openText();
