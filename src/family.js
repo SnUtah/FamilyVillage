@@ -8,10 +8,13 @@ import { list } from './store.js';
 const F = () => window.FAMILY || {};
 const pad = n => String(n).padStart(2, '0');
 export const PALETTE = ['#8FB8DE', '#F4B8C0', '#F7D58B', '#A8D08D', '#C9B3E6', '#F9C59E', '#E88A98', '#7FC8C2'];
-export const HAIRS = ['#5A3A2A', '#3A2A24', '#7A5238', '#1E1A22', '#C98A5B', '#E8E4DE'];
+export const HAIRS = ['#5A3A2A', '#3A2A24', '#7A5238', '#1E1A22', '#C98A5B', '#A8A39E', '#E8E4DE'];
+export const SKINS = ['#FFE8D6', '#FFE0C7', '#F6D2B2', '#E8B98F', '#C98E64', '#9A6544'];
+export const MAX_HOUSES = 10;   // 집은 10채까지 (그 뒤로 들어온 사람은 집 없이 이웃 목록에만)
 export const villageName = () => `${F().name || '우리'} 마을`;
 
-/* ---------- 구성원 (시트에 저장된 '내 모습'이 있으면 그걸로) ---------- */
+/* ---------- 구성원 = config.js에 미리 적어 둔 사람 + 마을에 와서 '내 캐릭터 만들기'를 한 사람 ----------
+   캐릭터를 만들면 '모습'(looks) 글에 닉네임(nick)·생일(bday)·들어온 때(joined)도 같이 저장돼요. */
 let lookCache = null, lookAt = -1;
 function savedLooks() {
   const rows = list('looks');
@@ -21,16 +24,24 @@ function savedLooks() {
 }
 export function members() {
   const looks = savedLooks();
-  return (F().members || []).filter(m => m && m.id).slice(0, 8).map((m, i) => {
+  const preset = (F().members || []).filter(m => m && m.id).slice(0, 8);
+  const ids = new Set(preset.map(m => m.id));
+  const joined = [...looks.entries()]
+    .filter(([who, l]) => !ids.has(who) && l && l.nick)
+    .map(([who, l]) => ({ id: who, name: l.nick, role: '', joined: l.joined || '' }))
+    .sort((a, b) => (a.joined || '').localeCompare(b.joined || ''));
+  return [...preset, ...joined].slice(0, 40).map((m, i) => {
+    const saved = looks.get(m.id) || {};
     const base = { outfit: PALETTE[i % PALETTE.length], hair: HAIRS[i % 5], longHair: false, glasses: false, hat: '', kid: false, ...(m.look || {}) };
-    return { ...m, index: i, look: { ...base, ...(looks.get(m.id) || {}) } };
+    const { nick, bday, joined, ...look } = saved;
+    return { ...m, name: nick || m.name, nick: nick || '', birthday: bday || m.birthday, index: i, look: { ...base, ...look } };
   });
 }
 export const member = id => members().find(m => m.id === id) || null;
 export const memberName = (id, fallback = '') => member(id)?.name || fallback || id || '';
 export const memberColor = id => member(id)?.look.outfit || '#F4B8C0';
 /* 부를 때 쓰는 짧은 이름: 역할이 있으면 역할(엄마), 없으면 이름 */
-export const callName = id => { const m = member(id); return m ? (m.role || m.name) : (id || ''); };
+export const callName = id => { const m = member(id); return m ? (m.nick || m.role || m.name) : (id || ''); };
 
 /* ---------- 나 (이 휴대폰을 쓰는 사람) ---------- */
 const ME_KEY = 'family-me';

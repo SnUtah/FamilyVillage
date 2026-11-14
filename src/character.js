@@ -2,13 +2,21 @@ import * as THREE from 'three';
 import { toon, mesh } from './util.js';
 
 /* 동글동글한 2등신 캐릭터
-   type: 'player'(나) | 'family'(집 앞에 서 있는 가족)
-   glasses 안경 · hat 'cap'|'beanie'|'flower' · kid 아이 키(작게) · shadows false면 그림자 생략(가볍게) */
-export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#5A3A2A', skin = '#FFE0C7', longHair = false, glasses = false, hat = '', kid = false, shadows = true } = {}) {
+   type: 'player'(나) | 'family'(집 앞에 서 있는 이웃)
+   처음 들어올 때 '내 캐릭터 만들기'에서 고르는 값:
+     hairStyle 'short'|'buzz'|'bob'|'long'|'ponytail'|'bun'|'pigtails'|'curly' · hair 머리 색 · skin 피부색
+     gender 'f'|'m'|'' (f = 속눈썹) · age 'kid'|'teen'|'adult'|'senior' · outfit 옷 색 · glasses 안경 · hat 'cap'|'beanie'|'flower'
+   (예전 값 longHair·kid 도 그대로 알아들어요) · shadows false면 그림자 생략(가볍게) */
+export const HAIR_STYLES = [['short', '짧은 머리'], ['buzz', '아주 짧게'], ['bob', '단발'], ['long', '긴 머리'], ['ponytail', '묶은 머리'], ['bun', '올림 머리'], ['pigtails', '양갈래'], ['curly', '뽀글 파마']];
+export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#5A3A2A', skin = '#FFE0C7', longHair = false, hairStyle = '', gender = '', age = '', glasses = false, hat = '', kid = false, shadows = true } = {}) {
+  const style = hairStyle || (longHair ? 'long' : 'short');
+  if (age === 'kid') kid = true;
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
   if (kid) body.scale.setScalar(0.8);
+  else if (age === 'teen') body.scale.setScalar(0.9);
+  else if (age === 'senior') body.rotation.x = 0.07;   // 살짝 구부정
 
   const top = outfit;
   const pants = '#6B5B53';
@@ -56,22 +64,44 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
   head.add(face);
 
   const hairMat = toon(hair);
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.45, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.52), hairMat);
+  const hairPart = (geo, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, hairMat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.castShadow = true; head.add(m); return m; };
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(style === 'buzz' ? 0.43 : 0.45, 24, 16, 0, Math.PI * 2, 0, Math.PI * (style === 'buzz' ? 0.46 : 0.52)), hairMat);
   cap.rotation.x = -0.35;
   cap.position.set(0, 0.03, -0.03);
   cap.castShadow = true;
   head.add(cap);
-  const bang = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), hairMat);
-  bang.scale.set(1.5, 0.55, 0.8);
-  bang.position.set(0.1, 0.26, 0.27);
-  bang.rotation.z = -0.3;
-  head.add(bang);
-
-  if (longHair) {
-    const back = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), hairMat);
-    back.scale.set(1.05, 1.25, 0.7);
-    back.position.set(0, -0.22, -0.18);
-    head.add(back);
+  if (style !== 'buzz') {
+    const bang = hairPart(new THREE.SphereGeometry(0.2, 12, 8), 0.1, 0.26, 0.27, 1.5, 0.55, 0.8);
+    bang.rotation.z = -0.3;
+  }
+  const ball = r => new THREE.SphereGeometry(r, 12, 10);
+  if (style === 'long') hairPart(new THREE.SphereGeometry(0.42, 16, 12), 0, -0.22, -0.18, 1.05, 1.25, 0.7);
+  else if (style === 'bob') {
+    hairPart(new THREE.SphereGeometry(0.44, 16, 12), 0, -0.06, -0.1, 1.08, 0.82, 0.86);
+  } else if (style === 'ponytail') {
+    hairPart(ball(0.17), 0, 0.12, -0.46, 1, 1, 1);
+    hairPart(new THREE.CapsuleGeometry(0.11, 0.26, 4, 8), 0, -0.14, -0.5, 1, 1, 0.9).rotation.x = 0.25;
+    const tie = mesh(new THREE.TorusGeometry(0.1, 0.03, 6, 12), outfit, 0, 0.04, -0.47);
+    tie.rotation.x = 0.4;
+    head.add(tie);
+  } else if (style === 'bun') {
+    const low = hat === 'cap' || hat === 'beanie';   // 모자를 쓰면 쪽머리를 뒤로 내려서
+    hairPart(ball(0.2), 0, low ? 0.02 : 0.42, low ? -0.46 : -0.2);
+    const tie = mesh(new THREE.TorusGeometry(0.15, 0.03, 6, 14), outfit, 0, low ? 0.02 : 0.32, low ? -0.36 : -0.17);
+    tie.rotation.x = low ? 0 : Math.PI / 2 - 0.5;
+    head.add(tie);
+  } else if (style === 'pigtails') {
+    for (const sx of [-1, 1]) {
+      hairPart(ball(0.15), 0.42 * sx, -0.08, -0.12, 0.9, 1.15, 0.9);
+      head.add(mesh(new THREE.SphereGeometry(0.05, 8, 6), outfit, 0.38 * sx, 0.06, -0.1));
+    }
+  } else if (style === 'curly') {
+    const g = ball(0.13);
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2;
+      hairPart(g, Math.cos(a) * 0.38, 0.18 + Math.sin(a * 2) * 0.03, Math.sin(a) * 0.38 - 0.06);
+    }
+    if (hat !== 'cap' && hat !== 'beanie') hairPart(ball(0.2), 0, 0.4, -0.04, 1.4, 0.8, 1.3);
   }
 
   // 눈, 볼
@@ -91,6 +121,13 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     cheek.position.set(0.24 * s, -0.09, 0.345);
     cheek.rotation.y = 0.55 * s;
     head.add(cheek);
+  }
+  if (gender === 'f') {   // 속눈썹 (눈 바깥쪽 한 가닥)
+    for (const sx of [-1, 1]) {
+      const lash = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.014, 0.01), eyeMat);
+      lash.position.set(0.2 * sx, 0.085, 0.37); lash.rotation.z = 0.5 * sx;
+      head.add(lash);
+    }
   }
   const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 6, 12, Math.PI), eyeMat);
   mouth.position.set(0, -0.1, 0.39);

@@ -134,7 +134,7 @@ export function avatarHTML(look = {}, cls = '') {
 }
 const whoChip = (id, name) => {
   const m = member(id);
-  return `<span class="who-chip" style="--c:${esc(m ? m.look.outfit : '#E6D5C6')}">${esc(m ? (m.role || m.name) : (name || '손님'))}</span>`;
+  return `<span class="who-chip" style="--c:${esc(m ? m.look.outfit : '#E6D5C6')}">${esc(m ? (m.nick || m.role || m.name) : (name || '손님'))}</span>`;
 };
 
 /* 시트 연결 상태 한 줄: 불러오는 중 · 실패(다시 시도) · 마지막 사본 */
@@ -226,7 +226,7 @@ export function mailboxView(onSent, { onBack, to: presetTo = '', filter: presetF
       ${guest ? '<input class="field l-name" maxlength="20" placeholder="이름" aria-label="이름" />' : ''}
       <div class="to-row" role="group" aria-label="받는 사람">
         <button type="button" class="to-chip on" data-to="all">👨‍👩‍👧‍👦 모두에게</button>
-        ${others.map(m => `<button type="button" class="to-chip" data-to="${esc(m.id)}" style="--c:${esc(m.look.outfit)}">${esc(m.role || m.name)}</button>`).join('')}
+        ${others.map(m => `<button type="button" class="to-chip" data-to="${esc(m.id)}" style="--c:${esc(m.look.outfit)}">${esc(m.nick || m.role || m.name)}</button>`).join('')}
       </div>
       <textarea class="field l-msg" maxlength="500" placeholder="하고 싶은 말을 적어 주세요 (500자 이내)" aria-label="편지 내용"></textarea>
       <label class="tc-row"><input type="checkbox" class="l-tc"> ⏳ 타임캡슐로 보내기 <small class="muted">정한 날이 되어야 열려요</small></label>

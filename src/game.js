@@ -156,7 +156,7 @@ export async function init({ character: c, onProgress = () => {} } = {}) {
     idle(step);
   }
   // 주소 끝에 #debug 가 있으면 콘솔에서 만져 볼 수 있는 손잡이 (테스트용)
-  if (/debug/.test(location.hash)) window.__wv = { goTo: id => goTo(props.interactables.find(i => i.id === id)), takePhoto, enterMuseum, exitMuseum, cycleTime, startTour, stopTour, applyTime, state, props, flowerCount: () => props.flowerCount(), interact: id => interact(props.interactables.find(i => i.id === id)), npcVisible: id => !!props.houses.npc(id)?.root.visible, treeStage: () => props.familyTree.refresh().stage, current: () => current?.id || '', pos: () => [state.pos.x, state.pos.z], setSeason: s => pickSeason(s), season: () => env.season, stats: () => { let meshes = 0, vis = 0; scene.traverse(o => { if (o.isMesh || o.isSprite || o.isPoints || o.isLine) { meshes++; let v = true, p = o; while (p) { if (!p.visible) { v = false; break; } p = p.parent; } if (v) vis++; } }); const r = renderer.info; return { calls: r.render.calls, tris: r.render.triangles, geos: r.memory.geometries, tex: r.memory.textures, programs: r.programs?.length, objects: meshes, visible: vis, dpr: renderer.getPixelRatio(), level }; } };
+  if (/debug/.test(location.hash)) window.__wv = { scene, camera, goTo: id => goTo(props.interactables.find(i => i.id === id)), takePhoto, enterMuseum, exitMuseum, cycleTime, startTour, stopTour, applyTime, state, props, flowerCount: () => props.flowerCount(), interact: id => interact(props.interactables.find(i => i.id === id)), npcVisible: id => !!props.houses.npc(id)?.root.visible, treeStage: () => props.familyTree.refresh().stage, current: () => current?.id || '', pos: () => [state.pos.x, state.pos.z], setSeason: s => pickSeason(s), season: () => env.season, stats: () => { let meshes = 0, vis = 0; scene.traverse(o => { if (o.isMesh || o.isSprite || o.isPoints || o.isLine) { meshes++; let v = true, p = o; while (p) { if (!p.visible) { v = false; break; } p = p.parent; } if (v) vis++; } }); const r = renderer.info; return { calls: r.render.calls, tris: r.render.triangles, geos: r.memory.geometries, tex: r.memory.textures, programs: r.programs?.length, objects: meshes, visible: vis, dpr: renderer.getPixelRatio(), level }; } };
 
   return {
     themes: museum.themes, start, setCharacter, enterMuseum: () => enterMuseum(), letterSent, takePhoto: ids => takePhoto(true, ids), portrait,
@@ -221,7 +221,9 @@ function start({ hint = true } = {}) {
   state.swoopT = 1.8;           // 궤도 카메라 → 내 캐릭터로 천천히 내려앉기
   perfSum = perfN = 0;
   if (sound.saved()) sound.setEnabled(true);
-  if (hint) setTimeout(() => UI.toast('👆 화면을 끌면 걷고, 이름표를 누르면 찾아가요', 4200), 900);
+  let seen = 0;
+  try { seen = +localStorage.getItem('family-hints') || 0; localStorage.setItem('family-hints', String(seen + 1)); } catch {}
+  if (hint && seen < 2) setTimeout(() => UI.toast('👆 화면을 끌면 걷고, 이름표를 누르면 찾아가요', 4200), 900);   // 처음 두 번만
   const greet = timeMode === 'night' ? '🌙 밤에 왔네요. 가로등을 켜 두었어요' : timeMode === 'dusk' ? '🌇 노을 지는 마을이에요. 천천히 둘러보세요' : null;
   if (greet) setTimeout(() => UI.toast(greet, 3600), 5600);
   // 🎂 오늘 생일인 가족이 있으면 축하부터
@@ -229,7 +231,7 @@ function start({ hint = true } = {}) {
   if (bd.length) setTimeout(() => {
     UI.confetti(['🎂', '🎉', '🎈', '💗', '✨']);
     sound.sfx('birthday');
-    UI.toast(`🎂 오늘은 ${bd.map(m => m.role || m.name).join(', ')} 생일이에요! 집 앞에 케이크가 있어요`, 4600);
+    UI.toast(`🎂 오늘은 ${bd.map(m => m.nick || m.role || m.name).join(', ')} 생일이에요! 집 앞에 케이크가 있어요`, 4600);
   }, 2400);
 }
 function setCharacter(c) { character = { ...character, ...c }; if (player) swapPlayer(); }
@@ -427,7 +429,13 @@ function goTo(it) {
   const dx = state.pos.x - it.pos.x, dz = state.pos.z - it.pos.z, d = Math.hypot(dx, dz) || 1;
   const stop = Math.max(0.5, it.r - 0.6);
   state.target = new THREE.Vector3(it.pos.x + (dx / d) * stop, 0, it.pos.z + (dz / d) * stop);
-  state.via = state.mode === 'out' ? route(state.pos, state.target) : [];
+  // 광장 ↔ 집 길을 오갈 때는 광장 북쪽 길(x=0)로 (벤치·질문판 사이로 빠지지 않게)
+  const pre = [];
+  if (state.mode === 'out' && (it.pos.z < -6) !== (state.pos.z < -6)) {
+    const a = new THREE.Vector3(0, 0, -3), b = new THREE.Vector3(0, 0, -10);
+    pre.push(...(state.pos.z < -6 ? [b, a] : [a, b]));
+  }
+  state.via = state.mode === 'out' ? [...pre, ...route(pre[pre.length - 1] || state.pos, state.target)] : [];
   state.pending = it; state.targetT = 20; state.moveT = 0; state.stuckT = 0;
 }
 function showMarker(pt) { marker.position.set(pt.x, 0.05, pt.z); markerT = 1; }

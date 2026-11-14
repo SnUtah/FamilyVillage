@@ -71,30 +71,32 @@ function paintSteps() {
   $('#lock-hint').textContent = hint ? `힌트: ${hint}` : '';
   $('#lock').hidden = unlocked;
   $('#who').hidden = !unlocked;
-  $('.btn-row').hidden = !unlocked;
-  if (unlocked) paintWho(chosen);
-  $('#who-note').textContent = !chosen ? '나를 골라 주세요. 이 휴대폰이 기억해요'
-    : isGuest() ? '손님은 편지만 쓸 수 있어요 (질문·하트·물 주기는 가족만)' : '편지·답·하트가 이 이름으로 남아요';
-  $('#btn-look').hidden = !unlocked || !chosen || isGuest() || !game;
+  $('.btn-row').hidden = !unlocked || !chosen;
+  $('#intro-help').hidden = !!chosen;
+  if (unlocked) paintMe(chosen);
+  $('#btn-look').hidden = !chosen || isGuest() || !game;
+  $('#btn-guest').hidden = !!chosen;
+  $('#btn-who-other').textContent = chosen ? '🙋 다른 캐릭터' : '🙋 이미 만든 캐릭터가 있어요';
   const btn = $('#btn-enter');
   if (!ready) return;
-  btn.disabled = !unlocked || !chosen;
-  btn.textContent = !unlocked ? '🔒 가족 암호를 넣어 주세요' : !chosen ? '🙋 캐릭터를 골라 주세요'
+  btn.disabled = !unlocked;
+  btn.textContent = !unlocked ? '🔒 암호를 넣어 주세요' : !chosen ? '✨ 내 캐릭터 만들기'
     : !game ? '📖 글로 보기' : isGuest() ? '손님으로 들어가기 🏡' : `${josa(callName(chosen), '으로/로')} 들어가기 🏡`;
 }
-/* 🙋 캐릭터 카드: 한 번 그려 두고 고른 것만 표시 (옆으로 넘긴 자리 유지) */
-function paintWho(chosen) {
-  const grid = $('#who-grid');
-  if (!grid.firstElementChild) {
-    grid.innerHTML = V.whoHTML(chosen, { carousel: true });
-    grid.querySelectorAll('.who-btn').forEach(b => b.onclick = () => {
-      buzz(10); sound.sfx('pop');
-      setMe(b.dataset.id);
-      b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    });
-    requestAnimationFrame(() => grid.querySelector('.who-btn.on')?.scrollIntoView({ inline: 'center', block: 'nearest' }));
+/* 🙋 내 캐릭터 카드 — 처음이면 이웃들 얼굴 + '닉네임과 모습을 정하면 내 집이 생겨요' */
+function paintMe(chosen) {
+  const m = me(), box = $('#me-card');
+  if (m) {
+    box.className = 'me-card';
+    box.innerHTML = `<span class="me-pic">${V.picHTML(m.id, m.look)}</span><div class="me-text"><b>${UI.esc(callName(m.id))}</b><span>편지·답·하트가 이 이름으로 남아요</span></div>`;
+  } else if (chosen) {
+    box.className = 'me-card guest';
+    box.innerHTML = `<span class="me-pic"><span class="guest-ic">👀</span></span><div class="me-text"><b>손님으로 구경해요</b><span>캐릭터를 만들면 마을에 내 집이 생겨요</span></div>`;
+  } else {
+    const ns = members().slice(0, 6);
+    box.className = 'me-card new';
+    box.innerHTML = `${ns.length ? `<div class="neighbors">${ns.map(n => `<span class="nb">${V.picHTML(n.id, n.look)}</span>`).join('')}</div>` : ''}<div class="me-text"><b>처음 오셨네요! 👋</b><span>닉네임과 모습을 정하면 마을에 내 집이 생겨요</span></div>`;
   }
-  grid.querySelectorAll('.who-btn').forEach(b => { const on = b.dataset.id === chosen; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
 }
 /* 3D 캐릭터 그림을 찍어 카드에 넣기 (마을이 준비된 뒤, 모습을 바꿨을 때) */
 const portraitKeys = new Map();
@@ -107,18 +109,20 @@ function paintPortraits(ids) {
     portraitKeys.set(m.id, key);
     const url = game.portrait(m.look);
     V.setPortrait(m.id, url);
-    const card = document.querySelector(`#who-grid .who-btn[data-id="${CSS.escape(m.id)}"]`);
-    if (card && url) { card.querySelector('.char-pic').innerHTML = V.picHTML(m.id, m.look); card.style.setProperty('--c', m.look.outfit || '#8FB8DE'); }
   });
+  if (!started && lockReady && isUnlocked()) paintMe(meId());
 }
 addEventListener('family:look', () => { const id = meId(); if (id && !isGuest()) setTimeout(() => paintPortraits([id]), 0); });
 addEventListener('family:data', () => { if (!started) paintPortraits(); });   // 다른 가족이 모습을 바꿨으면
 addEventListener('family:me', () => {
+  paintPortraits();
   if (isGuest()) { try { if (!localStorage.getItem('family-guest-look')) localStorage.setItem('family-guest-look', JSON.stringify(V.currentLook())); } catch {} }
   game?.setCharacter(V.currentLook());
   paintSteps();
 });
 $('#btn-look').onclick = () => { buzz(8); V.showLook(); };
+$('#btn-who-other').onclick = () => { buzz(8); V.showWho(() => paintSteps()); };
+$('#btn-guest').onclick = () => { buzz(8); setMe('guest'); };
 $('#lock').onsubmit = async e => {
   e.preventDefault();
   const inp = $('#lock-in'), btn = $('#lock-btn');
@@ -238,7 +242,6 @@ async function boot() {
     paintSound();
     stampVisit();
     noticeMail();
-    if (!W.bgm && !sound.saved()) setTimeout(() => UI.toast('🔊 오른쪽 위 버튼으로 오르골 소리를 켤 수 있어요', 3400), 9500);
   }
   addEventListener('family:data', () => { if (started) { stampVisit(); noticeMail(1200); } });
   function openText(section) {
@@ -271,9 +274,10 @@ async function boot() {
     { emoji: '🗺️', label: '모이는 곳', go: UI.showDirections },
     // 🙋 나
     ...(me() ? [{ g: 'me', emoji: '🏠', label: '내 집', go: () => V.showMember(meId()) }] : []),
-    { g: 'me', emoji: '🎨', label: '캐릭터 꾸미기', go: V.showLook },
-    { g: 'me', emoji: '🙋', label: '나는 누구?', go: () => V.showWho(onPick) },
+    ...(me() ? [{ g: 'me', emoji: '🎨', label: '캐릭터 꾸미기', go: V.showLook }] : [{ g: 'me', emoji: '✨', label: '내 캐릭터 만들기', go: () => V.showCreator(onPick) }]),
+    { g: 'me', emoji: '🙋', label: '다른 캐릭터로', go: () => V.showWho(onPick) },
     // ⚙️ 보기 · 설정
+    { g: 'set', emoji: '📖', label: '글로 보기', go: () => { UI.closeModal(); openText(); } },
     { g: 'set', emoji: SEASON_INFO[getSeason()].emoji, label: `계절: ${SEASON_INFO[getSeason()].label}`, go: () => { UI.closeModal(); const s = nextSeason(); UI.toast(`${SEASON_INFO[s].toast} · 메뉴에서 또 바꿀 수 있어요`, 3000); } },
     ...(game ? [
       { g: 'set', emoji: '🌙', label: '낮 · 밤 바꾸기', go: () => { UI.closeModal(); game.cycleTime(); } },
@@ -305,7 +309,7 @@ async function boot() {
   }
 
   const enterBtn = $('#btn-enter');
-  enterBtn.onclick = () => (game ? start3D() : openText());
+  enterBtn.onclick = () => { if (!meId()) { V.showCreator(() => paintSteps()); return; } game ? start3D() : openText(); };
   $('#btn-text').onclick = () => openText();
   $('#btn-tour-start').onclick = () => {
     if (!game) { openText(); return; }

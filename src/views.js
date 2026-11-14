@@ -4,8 +4,9 @@ import { list, add, refresh, lockInfo, savedCode, setFamilyCode } from './store.
 import {
   members, member, memberName, me, meId, isGuest, setMe, villageName, sinceDays, birthdaysOn, upcoming, monthEvents, ddayText,
   questionOn, answersOn, myAnswer, recentQuestions, heartsTo, heartsToday, sentHeartToday, visitorsOn, myStamps, treeInfo, STAGE_NAMES,
-  unreadForMe, polls, votesFor, PALETTE, HAIRS, isLockedLetter, callName,
+  unreadForMe, polls, votesFor, PALETTE, HAIRS, SKINS, isLockedLetter, callName,
 } from './family.js';
+import { HAIR_STYLES } from './character.js';
 import { sound } from './sound.js';
 
 /* =========================================================
@@ -34,18 +35,18 @@ export function familyView({ hero = true } = {}) {
           <div class="names">${esc(villageName())}</div>
           ${days > 0 ? `<div class="muted">함께한 지 <b style="color:var(--rose-deep)">${days.toLocaleString()}일째</b></div>` : ''}
         </div>` : ''}
-        ${bd.length ? `<div class="bday-banner">🎂 오늘은 <b>${bd.map(m => esc(m.role || m.name)).join(', ')}</b> 생일이에요! <button class="btn small pink f-bday" type="button">축하 편지 쓰기</button></div>` : ''}
+        ${bd.length ? `<div class="bday-banner">🎂 오늘은 <b>${bd.map(m => esc(m.nick || m.role || m.name)).join(', ')}</b> 생일이에요! <button class="btn small pink f-bday" type="button">축하 편지 쓰기</button></div>` : ''}
         ${W.greeting ? `<p class="inv-greet">${esc(W.greeting)}</p>` : ''}
         <div class="card">
           <b>👣 오늘 다녀간 가족</b>
-          <div class="chips-row">${vs.length ? vs.map(m => `<span class="who-chip" style="--c:${esc(m.look.outfit)}">${esc(m.role || m.name)}</span>`).join('') : '<span class="muted">아직 아무도 안 왔어요</span>'}</div>
+          <div class="chips-row">${vs.length ? vs.map(m => `<span class="who-chip" style="--c:${esc(m.look.outfit)}">${esc(m.nick || m.role || m.name)}</span>`).join('') : '<span class="muted">아직 아무도 안 왔어요</span>'}</div>
           ${me() ? `<p class="muted" style="margin:8px 0 0">내 출석 도장 <b>${myStamps()}개</b> 🐾</p>` : ''}
         </div>
         <div class="mem-grid">
           ${members().map(m => `
             <button type="button" class="mem-card" data-id="${esc(m.id)}">
               ${avatarHTML(m.look)}
-              <b>${esc(m.role || m.name)}${m.id === meId() ? ' <small>(나)</small>' : ''}</b>
+              <b>${esc(m.nick || m.role || m.name)}${m.id === meId() ? ' <small>(나)</small>' : ''}</b>
               <small>${esc(m.name)}${m.birthday ? ` · 🎂 ${mmdd(m.birthday)}` : ''}</small>
               <span class="mem-heart">💗 ${heartsTo(m.id).length}</span>
             </button>`).join('')}
@@ -106,7 +107,7 @@ export function memberView(id) {
           <div class="muted">${esc(m.role || '')}${m.birthday ? ` · 🎂 ${mmdd(m.birthday)}${bday === 0 ? ' <b style="color:var(--rose-deep)">오늘!</b>' : ` (D-${bday})`}` : ''}</div>
           ${m.line ? `<p class="mem-line">“${esc(m.line)}”</p>` : ''}
         </div>
-        ${bday === 0 ? `<div class="bday-banner">🎂 오늘은 ${esc(m.role || m.name)} 생일이에요!</div>` : ''}
+        ${bday === 0 ? `<div class="bday-banner">🎂 오늘은 ${esc(m.nick || m.role || m.name)} 생일이에요!</div>` : ''}
         <div class="stat-row">
           <div><b>💗 ${heartsTo(m.id).length}</b><small>받은 하트 (오늘 ${heartsToday(m.id).length})</small></div>
           <div><b>👣 ${new Set(list('visits').filter(v => v.who === m.id).map(v => v.day)).size}</b><small>출석 도장</small></div>
@@ -124,7 +125,7 @@ export function memberView(id) {
         ${q ? `<div class="card"><b>💬 오늘의 질문</b><p class="muted" style="margin:6px 0">${esc(q.q)}</p>
           ${ans ? (canSee ? `<p class="ans-text">${esc(ans.text)}</p>` : '<p class="muted">🔒 나도 답하면 볼 수 있어요</p>') : `<p class="muted">아직 답하지 않았어요</p>`}
           <button class="btn small m-q" type="button">답하러 가기</button></div>` : ''}
-        ${fromThem.length ? `<div class="card"><b>✉️ ${esc(m.role || m.name)}의 최근 편지</b>${fromThem.map((l, i) => `<button type="button" class="up-row linkrow" data-i="${i}"><span>${esc(String(l.message).split('\n')[0].slice(0, 26))}</span><span class="muted">${shortDate(l.time)}</span></button>`).join('')}</div>` : ''}`;
+        ${fromThem.length ? `<div class="card"><b>✉️ ${esc(m.nick || m.role || m.name)}의 최근 편지</b>${fromThem.map((l, i) => `<button type="button" class="up-row linkrow" data-i="${i}"><span>${esc(String(l.message).split('\n')[0].slice(0, 26))}</span><span class="muted">${shortDate(l.time)}</span></button>`).join('')}</div>` : ''}`;
       box.querySelector('.m-heart')?.addEventListener('click', () => { if (sendHeart(m.id)) render(); });
       box.querySelector('.m-mail')?.addEventListener('click', () => UI.showMailbox(hooks.onSent, { to: m.id }));
       box.querySelector('.m-look')?.addEventListener('click', () => showLook());
@@ -139,7 +140,7 @@ export function memberView(id) {
 }
 export function showMember(id) {
   const m = member(id);
-  openView(m ? (m.id === meId() ? '🏠 내 집' : `${m.emoji || '🏠'} ${m.role || m.name}네 집`) : '우리 가족', memberView(id));
+  openView(m ? (m.id === meId() ? '🏠 내 집' : `${m.emoji || '🏠'} ${m.nick || m.role || m.name}네 집`) : '우리 가족', memberView(id));
 }
 
 /* ---------- 💬 오늘의 질문 (내가 답해야 다른 가족 답이 열려요) ---------- */
@@ -196,7 +197,7 @@ export function questionView(day = dayKey(), { embedded = false } = {}) {
 function ansCard(a, isMine = false) {
   const m = member(a.who);
   return `<div class="ans-card${isMine ? ' me' : ''}" data-id="${esc(a.id)}" style="--c:${esc(m?.look.outfit || '#E6D5C6')}">
-    <div class="ans-top">${avatarHTML(m?.look || {}, 'mini')}<b>${esc(m ? (m.role || m.name) : a.name)}${isMine ? ' (나)' : ''}</b><small class="muted">${shortDate(a.time)}</small>${isMine ? '<button type="button" class="linklike a-edit">고치기</button>' : ''}</div>
+    <div class="ans-top">${avatarHTML(m?.look || {}, 'mini')}<b>${esc(m ? (m.nick || m.role || m.name) : a.name)}${isMine ? ' (나)' : ''}</b><small class="muted">${shortDate(a.time)}</small>${isMine ? '<button type="button" class="linklike a-edit">고치기</button>' : ''}</div>
     <p class="ans-text">${esc(a.text)}</p>
   </div>`;
 }
@@ -369,41 +370,83 @@ export function currentLook() {
   try { const g = JSON.parse(localStorage.getItem(GUEST_LOOK) || 'null'); if (g) return g; } catch {}
   return { outfit: PALETTE[Math.floor(Math.random() * PALETTE.length)], hair: HAIRS[Math.floor(Math.random() * 5)], longHair: Math.random() < 0.5 };
 }
-export function lookView() {
-  const look = currentLook();
-  const HATS = [['', '없음'], ['cap', '야구 모자'], ['beanie', '털모자'], ['flower', '꽃핀']];
+/* ✨ 내 캐릭터 만들기 · 꾸미기 — 처음 들어올 때(만들기)와 메뉴(꾸미기)에서 같은 화면을 씀
+   가족이 아니어도(모임·동아리) 쓸 수 있게 역할(엄마·아빠) 대신 닉네임으로 */
+const AGES = [['kid', '어린이'], ['teen', '청소년'], ['adult', '어른'], ['senior', '어르신']];
+const GENDERS = [['f', '여자'], ['m', '남자'], ['', '말 안 할래요']];
+const HATS = [['', '없음'], ['cap', '야구 모자'], ['beanie', '털모자'], ['flower', '꽃핀']];
+const newId = () => 'u' + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 6);
+export function lookView({ create = false, onDone } = {}) {
+  const m = create ? null : me();
+  const look = create
+    ? { outfit: PALETTE[Math.floor(Math.random() * PALETTE.length)], hair: HAIRS[Math.floor(Math.random() * 4)], skin: SKINS[1], hairStyle: 'short', gender: '', age: 'adult', glasses: false, hat: '' }
+    : { hairStyle: currentLook().longHair ? 'long' : 'short', age: currentLook().kid ? 'kid' : 'adult', skin: SKINS[1], ...currentLook() };
+  let nick = create ? '' : (m?.nick || (m ? m.name : '') || '');
+  let bday = create ? '' : (m?.birthday || '');
+  const seg = (k, opts) => `<div class="seg wrap">${opts.map(([v, l]) => `<button type="button" data-k="${k}" data-v="${v}" class="${(look[k] ?? '') === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const sw = (k, cols) => `<div class="sw">${cols.map(c => `<button type="button" class="sw-c${look[k] === c ? ' on' : ''}" data-k="${k}" data-v="${c}" style="--c:${c}" aria-label="${c}"></button>`).join('')}</div>`;
   const mount = root => {
-    const box = root.querySelector('.look-box');
-    const render = () => {
-      box.innerHTML = `
-        <div class="look-preview">${(() => { const pic = hooks.portrait?.(look); return pic ? `<img class="look-img" src="${pic}" alt="">` : avatarHTML(look, 'big'); })()}</div>
-        <b>옷 색</b><div class="sw">${PALETTE.map(c => `<button type="button" class="sw-c${look.outfit === c ? ' on' : ''}" data-k="outfit" data-v="${c}" style="--c:${c}" aria-label="옷 색 ${c}"></button>`).join('')}</div>
-        <b>머리 색</b><div class="sw">${HAIRS.map(c => `<button type="button" class="sw-c${look.hair === c ? ' on' : ''}" data-k="hair" data-v="${c}" style="--c:${c}" aria-label="머리 색 ${c}"></button>`).join('')}</div>
-        <b>머리 모양</b><div class="seg"><button type="button" data-k="longHair" data-v="0" class="${!look.longHair ? 'on' : ''}">짧은 머리</button><button type="button" data-k="longHair" data-v="1" class="${look.longHair ? 'on' : ''}">긴 머리</button></div>
-        <b>안경</b><div class="seg"><button type="button" data-k="glasses" data-v="0" class="${!look.glasses ? 'on' : ''}">안 써요</button><button type="button" data-k="glasses" data-v="1" class="${look.glasses ? 'on' : ''}">👓 써요</button></div>
-        <b>모자</b><div class="seg">${HATS.map(([v, l]) => `<button type="button" data-k="hat" data-v="${v}" class="${(look.hat || '') === v ? 'on' : ''}">${l}</button>`).join('')}</div>
-        <b>키</b><div class="seg"><button type="button" data-k="kid" data-v="0" class="${!look.kid ? 'on' : ''}">어른</button><button type="button" data-k="kid" data-v="1" class="${look.kid ? 'on' : ''}">아이</button></div>
-        <button class="btn pink lk-save" type="button" style="width:100%;margin-top:14px;padding:14px">✨ 이 모습으로 할래요</button>
-        ${me() ? '<p class="muted center">바꾼 모습은 가족에게도 보여요 (내 집 앞의 나)</p>' : ''}`;
-      box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
-        const k = b.dataset.k, v = b.dataset.v;
-        look[k] = ['longHair', 'glasses', 'kid'].includes(k) ? v === '1' : v;
-        buzz(6); sound.sfx('pop');
-        render();
-      });
-      box.querySelector('.lk-save').onclick = async () => {
-        if (me()) await add('looks', { id: meId(), who: meId(), look: { ...look } });
-        else { try { localStorage.setItem(GUEST_LOOK, JSON.stringify(look)); } catch {} }
-        fire('family:look', look);
-        toast('✨ 새 모습으로 바뀌었어요');
-        closeModal();
-      };
+    const prev = root.querySelector('.look-preview'), opts = root.querySelector('.look-opts');
+    const paintPrev = () => {
+      const pic = hooks.portrait?.({ ...look, kid: look.age === 'kid', longHair: ['long', 'bob'].includes(look.hairStyle) });
+      prev.innerHTML = pic ? `<img class="look-img" src="${pic}" alt="">` : avatarHTML({ ...look, kid: look.age === 'kid', longHair: look.hairStyle === 'long' }, 'big');
     };
-    render();
+    const render = () => {
+      opts.innerHTML = `
+        <b>성별</b>${seg('gender', GENDERS)}
+        <b>나이</b>${seg('age', AGES)}
+        <b>피부색</b>${sw('skin', SKINS)}
+        <b>머리 모양</b>${seg('hairStyle', HAIR_STYLES)}
+        <b>머리 색</b>${sw('hair', HAIRS)}
+        <b>옷 색</b>${sw('outfit', PALETTE)}
+        <b>안경</b>${seg('glasses', [['0', '안 써요'], ['1', '👓 써요']])}
+        <b>모자</b>${seg('hat', HATS)}`;
+      opts.querySelectorAll('[data-k="glasses"]').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === !!look.glasses));
+      opts.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+        const k = b.dataset.k, v = b.dataset.v;
+        look[k] = k === 'glasses' ? v === '1' : v;
+        buzz(6); sound.sfx('pop');
+        render(); paintPrev();
+      });
+    };
+    const nickIn = root.querySelector('.lk-nick'), bm = root.querySelector('.lk-bm'), bd = root.querySelector('.lk-bd');
+    nickIn.value = nick;
+    if (/^\d{2}-\d{2}$/.test(bday)) { bm.value = String(+bday.slice(0, 2)); bd.value = String(+bday.slice(3)); }
+    render(); paintPrev();
+    root.querySelector('.lk-save').onclick = async () => {
+      nick = nickIn.value.trim().replace(/\s+/g, ' ').slice(0, 10);
+      if (!nick) { nickIn.focus(); toast('닉네임을 적어 주세요 ✏️'); return; }
+      bday = bm.value && bd.value ? `${String(bm.value).padStart(2, '0')}-${String(bd.value).padStart(2, '0')}` : '';
+      const out = { ...look, kid: look.age === 'kid', longHair: ['long', 'bob'].includes(look.hairStyle), nick, bday };
+      if (create || isGuest() || !meId()) {
+        const id = newId();
+        await add('looks', { id, who: id, look: { ...out, joined: new Date().toISOString() } });
+        setMe(id);
+      } else {
+        await add('looks', { id: meId(), who: meId(), look: { ...out, joined: me()?.joined || look.joined || '' } });
+      }
+      fire('family:look', out);
+      toast(create ? `✨ 반가워요, ${nick}! 마을에 ${nick}네 집이 생겼어요` : '✨ 새 모습으로 바뀌었어요', 3200);
+      closeModal();
+      onDone?.();
+    };
   };
-  return { html: '<div class="look-box"></div>', mount };
+  const days = n => Array.from({ length: n }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
+  return {
+    html: `<div class="look-box">
+      <div class="look-preview"></div>
+      <label class="lk-row"><b>닉네임</b><input class="field lk-nick" maxlength="10" placeholder="마을에서 부를 이름 (10자까지)" autocomplete="off" /></label>
+      <div class="look-opts"></div>
+      <b>생일 <small class="muted">(선택 · 그날 집 앞에 케이크가 생겨요)</small></b>
+      <div class="lk-bday"><select class="field lk-bm"><option value="">월</option>${days(12)}</select><select class="field lk-bd"><option value="">일</option>${days(31)}</select></div>
+      <button class="btn pink lk-save" type="button" style="width:100%;margin-top:14px;padding:14px">${create ? '✨ 이 캐릭터로 시작할래요' : '✨ 이 모습으로 할래요'}</button>
+      <p class="muted center">바꾼 모습은 마을 사람들에게도 보여요 (내 집 앞의 나)</p>
+    </div>`,
+    mount,
+  };
 }
 export function showLook() { openView('🎨 내 캐릭터 꾸미기', lookView()); }
+export function showCreator(onDone) { openView('✨ 내 캐릭터 만들기', lookView({ create: true, onDone })); }
 
 /* ---------- 🙋 나는 누구예요? (시작 화면과 메뉴에서) ---------- */
 /* 3D로 찍은 캐릭터 그림 (game.portrait) — 없으면 그림 대신 간단한 아바타 */
@@ -412,7 +455,7 @@ export function setPortrait(id, url) { if (url) portraits.set(id, url); }
 export const picHTML = (id, look) => portraits.has(id) ? `<img class="char-img" src="${portraits.get(id)}" alt="" draggable="false">` : avatarHTML(look, 'big');
 export function whoHTML(selected = meId(), { carousel = false } = {}) {
   return `<div class="who-grid${carousel ? ' carousel' : ''}">
-    ${members().map(m => `<button type="button" class="who-btn${selected === m.id ? ' on' : ''}" data-id="${esc(m.id)}" style="--c:${esc(m.look.outfit || '#8FB8DE')}" aria-label="${esc(m.role || m.name)}"><span class="char-pic">${picHTML(m.id, m.look)}</span><b>${esc(m.role || m.name)}</b><small>${esc(m.name)}</small></button>`).join('')}
+    ${members().map(m => `<button type="button" class="who-btn${selected === m.id ? ' on' : ''}" data-id="${esc(m.id)}" style="--c:${esc(m.look.outfit || '#8FB8DE')}" aria-label="${esc(m.nick || m.nick || m.role || m.name)}"><span class="char-pic">${picHTML(m.id, m.look)}</span><b>${esc(m.nick || m.nick || m.role || m.name)}</b><small>${esc(m.nick ? '' : m.role ? m.name : '')}</small></button>`).join('')}
     <button type="button" class="who-btn guest${selected === 'guest' ? ' on' : ''}" data-id="guest" style="--c:#C9BBA9" aria-label="손님으로 구경만"><span class="char-pic"><span class="guest-ic">👀</span></span><b>구경만</b><small>손님</small></button>
   </div>`;
 }
@@ -426,9 +469,12 @@ export function whoView(onPick) {
       toast(b.dataset.id === 'guest' ? '👀 손님으로 구경해요' : `🙋 ${josa(callName(b.dataset.id), '으로/로')} 들어왔어요`);
     });
   };
-  return { html: `<p class="muted">이 휴대폰을 쓰는 사람을 골라 주세요. 편지·답·하트가 이 이름으로 남아요</p>${whoHTML()}`, mount };
+  const html = `<p class="muted">다른 휴대폰에서 이미 만든 캐릭터가 있으면 골라 주세요. 없으면 새로 만들어요</p>${whoHTML()}
+    <button class="btn pink lk-new" type="button" style="width:100%;margin-top:6px;padding:12px">✨ 새 캐릭터 만들기</button>`;
+  const mount2 = root => { mount(root); root.querySelector('.lk-new').onclick = () => showCreator(() => onPick?.(meId())); };
+  return { html, mount: mount2 };
 }
-export function showWho(onPick) { openView('🙋 나는 누구예요?', whoView(onPick)); }
+export function showWho(onPick) { openView('🙋 내 캐릭터 고르기', whoView(onPick)); }
 
 /* ---------- 🔒 가족 암호 설정 (선택: 안 걸면 누구나 바로 들어와요) ---------- */
 export function lockSettingsView(onChange) {
@@ -493,7 +539,7 @@ export function photoPickView() {
   };
   return {
     html: `<p class="muted">누구랑 같이 찍을까요? (최대 5명)</p>
-      <div class="who-grid">${others.map(m => `<button type="button" class="who-btn" data-id="${esc(m.id)}">${avatarHTML(m.look)}<b>${esc(m.role || m.name)}</b></button>`).join('')}</div>
+      <div class="who-grid">${others.map(m => `<button type="button" class="who-btn" data-id="${esc(m.id)}">${avatarHTML(m.look)}<b>${esc(m.nick || m.role || m.name)}</b></button>`).join('')}</div>
       <button class="btn pink pp-go" type="button" style="width:100%;margin-top:12px;padding:14px">📸 3 · 2 · 1 찍기</button>`,
     mount,
   };

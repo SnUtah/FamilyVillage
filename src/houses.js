@@ -5,7 +5,7 @@ import { createCharacter } from './character.js';
 import { balloons, onlyIn, bulbMats } from './world.js';
 import { getSeason } from './season.js';
 import {
-  members, meId, heartsTo, birthdaysOn, unreadForMe, answersOn, isLockedLetter, treeInfo, dayKey,
+  members, meId, MAX_HOUSES, heartsTo, birthdaysOn, unreadForMe, answersOn, isLockedLetter, treeInfo, dayKey,
 } from './family.js';
 import { list } from './store.js';
 
@@ -22,15 +22,14 @@ export const TREE = { x: 0, z: -15.5, r: 1.4 };
 const darken = (hex, k = 0.25) => '#' + new THREE.Color(hex).lerp(new THREE.Color('#5A4038'), k).getHexString();
 const cut = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
-/* 집 자리: 가족 나무를 가운데 두고 왼쪽→오른쪽 차례로 가로 한 줄 (모두 화면 쪽을 봄)
-   예) 5명: 할머니 · 아빠 · 엄마 | 🌱 | 첫째 · 막내 */
-export function houseSpots(n) {
-  const L = Math.ceil(n / 2);
-  return Array.from({ length: n }, (_, i) => {
-    const x = i < L ? -ROW.gap * (L - i) : ROW.gap * (i - L + 1);
-    return { x, z: ROW.z, npcX: x, npcZ: ROW.z + 2.6 };
-  });
+/* 집 자리: 가족 나무를 가운데 두고 왼쪽·오른쪽 번갈아 바깥으로 (모두 화면 쪽을 봄)
+   새로 들어온 사람은 다음 빈자리에 → 먼저 있던 집은 자리가 안 바뀜. 10채까지 */
+export function houseSpot(i) {
+  if (i >= MAX_HOUSES) return null;
+  const x = (i % 2 === 0 ? -1 : 1) * ROW.gap * (Math.floor(i / 2) + 1);
+  return { x, z: ROW.z, npcX: x, npcZ: ROW.z + 2.6 };
 }
+export const houseSpots = n => Array.from({ length: Math.min(n, MAX_HOUSES) }, (_, i) => houseSpot(i));
 
 /* 통나무 벽 무늬 (모든 집이 같이 씀) */
 let logMat = null;
@@ -69,13 +68,13 @@ function smokeTexture() {
 
 export function buildHouses({ group, colliders, boxes, addInteract, updaters }) {
   const ms = members();
-  const spots = houseSpots(ms.length);
   const houses = [];
   const today = dayKey();
   const birthdayIds = new Set(birthdaysOn(today).map(m => m.id));
 
-  ms.forEach((m, i) => {
-    const sp = spots[i];
+  function addHouse(m, i) {
+    const sp = houseSpot(i);
+    if (!sp) return;
     const col = m.look.outfit;
     const g = new THREE.Group();
     // 앞이 +z(화면 쪽)인 통나무집
@@ -192,11 +191,12 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
     colliders.push(npcCol);
 
     const isMe = m.id === meId();
-    const it = addInteract(`house:${m.id}`, `${m.role || m.name}네 집`, m.emoji || '🏠', `${m.role || m.name}네 집 구경`, sp.npcX, sp.npcZ, 2.5, 3.9);
+    const it = addInteract(`house:${m.id}`, `${m.nick || m.role || m.name}네 집`, m.emoji || '🏠', `${m.nick || m.role || m.name}네 집 구경`, sp.npcX, sp.npcZ, 2.5, 3.9);
     it.label.position.z = sp.z + 1.1;   // 이름표는 지붕 앞쪽 위에
     it.member = m.id;
     houses.push({ m, sp, g, npc, npcCol, it, flagPivot, badge: null, badgeText: '', bubbles: new Map(), bub: null, bubT: 0, sayT: 1 + i, sayIdx: 0, near: false, isMe });
-  });
+  }
+  ms.slice(0, MAX_HOUSES).forEach((m, i) => addHouse(m, i));
 
   /* 집 위의 작은 표시: 💗 하트 수 · 🎂 생일 · 💌 내 새 편지 */
   function badgeFor(h) {
@@ -220,6 +220,8 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
   function refresh() {
     const mine = meId();
     const now_ = members();
+    // 새로 캐릭터를 만든 사람 → 다음 빈자리에 집 짓기
+    now_.forEach(m => { if (houses.length < MAX_HOUSES && !houses.some(h => h.m.id === m.id)) addHouse(m, houses.length); });
     houses.forEach(h => {
       // 가족이 '내 캐릭터 꾸미기'로 모습을 바꿨으면 집 앞 캐릭터도 새로
       const fresh = now_.find(x => x.id === h.m.id);
@@ -237,15 +239,15 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
       h.isMe = h.m.id === mine;
       h.npc.root.visible = !h.isMe;   // 내 집 앞엔 내가 직접 서 있으니까
       h.npcCol.r = h.isMe ? 0 : 0.45;
-      const want = h.isMe ? '🏠 내 집' : `${h.m.emoji || '🏠'} ${h.m.role || h.m.name}네 집`;
+      const want = h.isMe ? '🏠 내 집' : `${h.m.emoji || '🏠'} ${h.m.nick || h.m.role || h.m.name}네 집`;
       if (h.it.labelText !== want) {
         h.it.labelText = want;
         const fresh = labelSprite(want), old = h.it.label.material.map;
         h.it.label.material.map = fresh.material.map; h.it.label.material.needsUpdate = true;
         old.dispose(); fresh.material.dispose();
       }
-      h.it.text = h.isMe ? '내 집' : `${h.m.role || h.m.name}네 집`;
-      h.it.action = h.isMe ? '내 집 들어가기' : `${h.m.role || h.m.name}네 집 구경`;
+      h.it.text = h.isMe ? '내 집' : `${h.m.nick || h.m.role || h.m.name}네 집`;
+      h.it.action = h.isMe ? '내 집 들어가기' : `${h.m.nick || h.m.role || h.m.name}네 집 구경`;
       const unread = h.isMe && unreadForMe().length > 0;
       h.flagPivot.rotation.z = unread ? -1.4 : 0;
       const text = badgeFor(h);
@@ -292,10 +294,10 @@ export function buildHouses({ group, colliders, boxes, addInteract, updaters }) 
         }
         h.bub = h.bubbles.get(line);
         h.bub.position.set(n.root.position.x, 2.75, n.root.position.z);
-        h.bub.visible = true; h.bubT = 3;
+        h.bub.visible = true; h.bubT = 3; h.it.muted = true;   // 말풍선이 뜨면 집 이름표는 잠깐 숨김 (겹치지 않게)
         h.sayT = 6 + Math.random() * 4;
       }
-      if (h.bub) { h.bubT -= dt; if (h.bubT <= 0 || !near) { h.bub.visible = false; h.bub = null; } }
+      if (h.bub) { h.bubT -= dt; if (h.bubT <= 0 || !near) { h.bub.visible = false; h.bub = null; h.it.muted = false; } }
     });
   }
 
