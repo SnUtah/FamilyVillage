@@ -1,146 +1,172 @@
-# 🌿 우리 가족 마을 — 가족이 같이 쓰는 3D 숲속 마을 (봄·여름 · 🍂 가을 · ❄️ 겨울)
+# 🌿 Our family village — a 3D forest village the whole family shares (spring-summer · 🍂 autumn · ❄️ winter)
 
-![숲속 통나무집이 모여 있는 우리 가족 마을](og.jpg)
+![Log cabins gathered in the woods: our family village](og.jpg)
 
-가족이 휴대폰으로 들어와 **내 캐릭터로 숲속 통나무집 마을을 걸으며**, 오늘의 질문에 답하고, 편지와 하트를 주고받고,
-생일을 축하하고, 함께 나무를 키우는 가족 홈페이지 템플릿입니다.
-서버 없이 **HTML 파일 하나**로 동작하고, 이름·생일·질문·사진은 전부 `config.js` 한 파일에서 바꿉니다.
-가족 모두의 글을 한곳에 모으려면 구글 시트 하나만 연결하면 돼요. (무료)
-(이 폴더의 이름·생일·글·사진은 모두 **가상의 예시 가족 '김씨네'** 입니다.)
+A family website template. Everyone comes in on their phone and **walks around a village of log cabins in the woods as their own character**.
+They answer the question of the day, swap letters and hearts, celebrate birthdays and grow a tree together.
+It runs from **one HTML file** with no server. Names, birthdays, questions and photos all live in one file: `config.js`.
+To gather everyone's posts in one place, connect one Google Sheet. (Free)
+(All names, birthdays, posts and photos in this folder belong to **a made-up sample family, "The Kims" (김씨네)**.)
 
-> 🌐 **살펴보기:** https://familyvillage.vercel.app · 💻 **코드:** https://github.com/SnUtah/FamilyVillage
-> 📦 `한파일로_만들기.bat`으로 만든 `가족마을.html` 하나로도 열립니다.
-> 💍 전작: [작은 결혼 마을](https://marriagevillage.vercel.app) — 같은 뼈대에 분위기와 기능을 가족용으로 바꿨어요.
+> 🌐 **See it:** https://familyvillage.vercel.app · 💻 **Code:** https://github.com/SnUtah/FamilyVillage
+> 📦 It also opens as the single file `가족마을.html` made by `한파일로_만들기.bat`.
+> 💍 Earlier project: [A little wedding village](https://marriagevillage.vercel.app) — the same frame, with the mood and features changed for families.
 
-## 들어오는 순서
-1. 🔒 **가족 암호 (선택)** — 기본은 암호 없이 바로 들어와요. 시작 화면 오른쪽 위 **⚙️**(또는 메뉴 → 가족 암호)에서 걸면, 시트를 연결한 경우 가족 모두에게 적용되고 틀린 암호로는 글을 하나도 내려주지 않아요. 바꾸기·없애기도 ⚙️에서.
-   시트를 연결해 주소를 공유했다면 **첫날 바로 걸어 두는 걸 추천해요.** (암호가 없으면 주소를 아는 누구나 글을 쓸 수 있어요)
-2. ✨ **내 캐릭터 만들기** — 처음 오면 **닉네임**을 정하고 성별·나이(어린이~어르신)·피부색·머리 모양(8가지)·머리 색·옷 색·안경·모자·생일(선택)을 골라요. 3D 미리보기가 바로 바뀌어요. 만들면 마을에 **내 집**이 생기고(10채까지), 이 휴대폰이 기억해서 다음엔 바로 "○○로 들어가기". 엄마·아빠 같은 역할을 고르지 않아서 **가족이 아닌 모임**에서도 쓸 수 있어요. 다른 휴대폰에서 만든 캐릭터는 **🙋 다른 캐릭터**에서 골라요. (손님으로 구경하기도 있어요)
-3. 🏡 **입장** — 오늘 처음 오면 출석 도장이 찍히고, 나에게 온 새 편지가 있으면 알려 줘요.
+## How you come in
+1. 🔒 **Family password (optional)** — By default you come straight in, no password. Set one with **⚙️** at the top right of the start screen (or menu → Family password). With a sheet connected, it applies to the whole family, and a wrong password gets no posts at all. Change or remove it with ⚙️ too.
+   If you connected a sheet and shared the address, **we recommend setting it on the first day.** (Without a password, anyone who knows the address can post.)
+2. ✨ **Create my character** — On the first visit, pick a **nickname**, then choose gender, age (child to senior), skin color, hairstyle (8 kinds), hair color, outfit color, glasses, hat and birthday (optional). The 3D preview changes as you go. Once you create it, **your own house** appears in the village (up to 10 houses). The phone remembers you, so next time it's just "Enter as ○○". There are no roles like Mom or Dad to pick, so **groups that aren't families** can use it too. To use a character made on another phone, pick it in **🙋 Switch character**. (You can also just look around as a guest.)
+3. 🏡 **Enter** — On your first visit of the day you get a visit stamp, and you're told if a new letter has come for you.
 
-> 📱 **앱처럼 쓰기:** 마을 메뉴 → **📱 앱으로 설치**(또는 브라우저의 '홈 화면에 추가')를 누르면 🏡 아이콘이 생겨요. 부모님·조부모님도 한 번에 들어오고, 인터넷이 잠깐 끊겨도 마지막으로 본 마을이 열려요 (`sw.js`).
+> 📱 **Use it like an app:** village menu → **📱 Install as an app** (or the browser's "Add to Home Screen") adds a 🏡 icon. Parents and grandparents get in with one tap, and if the internet drops for a moment, the last village you saw still opens (`sw.js`).
 
-## 마을에 있는 것들
+## What's in the village
 
-| 오브젝트 | 기능 |
+| Object | What it does |
 |---|---|
-| 🏘️ 가족 집 길 | 광장 북쪽에 **가족 나무를 가운데 두고 가로 한 줄**로 선 통나무집 (정면이 화면 쪽이라 걸으며 한 채씩 크게 보여요). 구성원마다 집 하나 (지붕·문·덧창이 그 사람 색, 굴뚝 연기). 집 앞에 그 사람이 서서 다가오면 바라보고 손을 흔들며 **오늘 남긴 답·최근 편지를 말풍선**으로 보여 줘요. 집을 누르면 프로필·하트·편지·연락 |
-| 💗 하트 | 가족 집 앞에서 💗 버튼을 누르면 그 사람에게 하트 (하루에 한 번). 집 위에 받은 하트 수 |
-| ✉️ 안부 우체통 | 받는 사람 고르기 (모두에게 / 한 사람에게), **⏳ 타임캡슐** (정한 날에 열림), 편지마다 👍😂🥹💗 반응과 **답장**. 내 집 우편함에 새 편지 깃발 |
-| 🌷 가족 정원 | 편지 한 통 = 꽃 한 송이 (보낸 사람 색) |
-| 💬 오늘의 질문 | 광장 게시판에 하루 한 질문. **내가 답해야 다른 가족의 답이 열려요.** 답마다 반응·답장, 지난 질문 모아 보기 |
-| 📅 가족 달력 | 생일·기념일·제사·모임 달력과 D-day, 휴대폰 캘린더에 추가 (매년 반복) |
-| 🎂 생일 모드 | 생일인 날 그 사람 집에 케이크·풍선, 고깔모자, 꽃가루와 축하 가락, 시작 화면 알림 |
-| 🗳️ 가족 투표함 | "여행지 어디로?" 같은 투표. 누가 뭘 골랐는지 보이고, 마음이 바뀌면 다시 고르기. 새 투표 만들기 |
-| 🌱 함께 키우는 나무 | 가족이 하루 한 번 물을 주면 씨앗 → 새싹 → 묘목 → 나무 → 꽃 → 열매가 열려요. 오래 안 오면 목말라요 |
-| 👣 오늘 다녀간 가족 | 입구 이젤에 오늘 들른 가족, 내 출석 도장 |
-| ❓ 가족 퀴즈 | "아빠의 첫 차 색은?" + **점수판** (누가 가족을 제일 잘 아나) |
-| 🔥 모닥불 | 광장 가운데 모닥불에 고구마 굽기 🍠 |
-| 📸 가족 포토존 | 같이 찍을 가족을 골라 (최대 5명) 양옆에 세우고 3·2·1 폴라로이드 → 공유·저장 |
-| 🖼️ 가족 사진관 | 입구 오른쪽. 테마별 사진 전시 (여행 · 명절 · 아이들 자라는 모습 · 평범한 날 · 옛날 사진) |
-| 🗺️ 모이는 곳 | 본가 주소 복사, 네이버/카카오/티맵, 교통·주차 |
-| 🎨 캐릭터 꾸미기 | 옷 색·머리색(흰머리 포함)·머리 모양·안경·모자·아이 키 — 바꾼 모습은 내 집 앞의 나에게도 반영 |
+| 🏘️ Family houses | Log cabins north of the square, **in one row with the family tree in the middle** (they face the screen, so you see each one up close as you walk). One house per member (roof, door and shutters in that person's color, chimney smoke). The person stands in front of their house, turns and waves when you come close, and shows **today's answer or their latest letter in a speech bubble**. Tap a house for their profile, hearts, letters and contact |
+| 💗 Hearts | In front of a family house, tap 💗 to send that person a heart (once a day). The hearts they got show above the house |
+| ✉️ Mailbox | Pick who gets it (everyone / one person), **⏳ time capsule** (opens on the day you choose), 👍😂🥹💗 reactions and **replies** on every letter. A flag goes up on your house's mailbox when a new letter comes |
+| 🌷 Family garden | One letter = one flower (in the sender's color) |
+| 💬 Question of the day | One question a day on the board in the square. **You see the others' answers after you answer.** Reactions and replies on each answer, and a list of past questions |
+| 📅 Family calendar | Birthdays, anniversaries, memorial days and get-togethers with D-day counts. Add them to your phone's calendar (repeats every year) |
+| 🎂 Birthday mode | On someone's birthday: cake and balloons at their house, a party hat, confetti and a birthday tune, and a note on the start screen |
+| 🗳️ Family polls | Polls like "Where should we go on our trip?". You see who picked what, and you can pick again if you change your mind. Make new polls too |
+| 🌱 The tree we grow together | When the family waters it once a day, it grows from seed → sprout → sapling → tree → blossoms → fruit. Leave it too long and it gets thirsty |
+| 👣 Visited today | The easel at the entrance shows who stopped by today, and your visit stamps |
+| ❓ Family quiz | "What color was Dad's first car?" plus a **scoreboard** (who knows the family best) |
+| 🔥 Campfire | Roast sweet potatoes 🍠 at the campfire in the middle of the square |
+| 📸 Family photo zone | Pick who's in the photo (up to 5). They stand on either side of you, 3 · 2 · 1, polaroid → share or save |
+| 🖼️ Family photo gallery | To the right of the entrance. Photos by theme (trips · holidays · kids growing up · ordinary days · old photos) |
+| 🗺️ Meeting place | Copy the family home's address, Naver / Kakao / TMAP, transport and parking |
+| 🎨 Customize my character | Outfit color, hair color (gray hair too), hairstyle, glasses, hat, child height. Your new look also shows on you in front of your house |
 
-### 🌿 🍂 ❄️ 계절 모드
-| 계절 | 마을 | 화면 색 |
+### 🌿 🍂 ❄️ Seasons
+| Season | Village | Screen colors |
 |---|---|---|
-| 🌿 봄·여름 (기본) | 초록 숲에 연분홍 꽃나무 몇 그루, 들꽃, 민들레 홀씨, 나비, 허수아비 | 잎사귀 초록 |
-| 🍂 가을 | 단풍·은행·주렁주렁 감, 코스모스, 떨어지는 낙엽, 고추잠자리, 낙엽 더미 | 감색 주황 · 크라프트지 |
-| ❄️ 겨울 | 눈 덮인 땅·나무·지붕, 내리는 눈, 🎄 광장 크리스마스 트리, 집집마다 반짝이는 전구 | 하늘색 · 빨강 |
-- 가족이 **☰ 메뉴 → 계절**을 누르면 🌿 → 🍂 → ❄️ 로 바뀌고, 그 휴대폰이 기억해요
-- `config.js`의 `season`: `'green'`(기본) · `'autumn'` · `'winter'` · `'auto'`(날짜에 따라 3~8월 봄·여름, 9~11월 가을, 12~2월 겨울)
-- 함께 키우는 나무도 계절 색을 따라가요 (모은 물·단계는 그대로)
+| 🌿 Spring-summer (default) | Green forest with a few pale pink blossom trees, wildflowers, dandelion seeds, butterflies, a scarecrow | Leaf green |
+| 🍂 Autumn | Red maples, yellow ginkgos, persimmons hanging heavy, cosmos, falling leaves, red dragonflies, leaf piles | Persimmon orange · kraft paper |
+| ❄️ Winter | Snow on the ground, trees and roofs, falling snow, a 🎄 Christmas tree in the square, twinkling lights on every house | Sky blue · red |
+- When someone taps **☰ menu → Season**, it changes 🌿 → 🍂 → ❄️, and that phone remembers it
+- `season` in `config.js`: `'green'` (default) · `'autumn'` · `'winter'` · `'auto'` (by date: Mar–Aug spring-summer, Sep–Nov autumn, Dec–Feb winter)
+- The tree we grow together follows the season's colors too (the water collected and its stage stay the same)
 
-### 처음 오는 사람을 위한 장치
-- **🚶 자동 투어**, **📖 글로 보기**(3D 없이 한 페이지, 3D가 안 되는 휴대폰은 자동), **가+ 큰 글씨**, 휴대폰 뒤로가기 = 창 닫기
-- **🌙 낮 · 노을 · 밤**: 계절마다 하늘색이 달라요. 밤에는 가로등·창문·모닥불(겨울엔 트리 전구)이 밝아요
-- **🔊 마림바 배경음과 효과음**은 파일 없이 합성 (기본 꺼짐, 오른쪽 위 버튼)
-- 이름표를 누르면 분수·게시판을 돌아서 찾아가요
+### For first-time visitors
+- **🚶 Auto tour**, **📖 Text view** (one page without 3D; phones that can't run 3D get it automatically), **A+ larger text**, and the phone's back button closes a window
+- **🌙 Day · sunset · night**: the sky color is different in each season. At night, the streetlights, windows and campfire (and the tree lights in winter) glow
+- **🔊 Marimba background music and sound effects** are synthesized, no files needed (off by default, button at the top right)
+- Tap a name tag and your character walks there, going around the fountain and the board
+- **🌐 English · Korean**: the site opens in the device's language (Korean device → Korean, any other → English). The `EN · 한` button on the start screen and the 🌐 item in the ☰ menu switch it, and the choice is remembered. `?lang=ko` or `?lang=en` at the end of the address opens that language.
+  Installed as an app, it's named in Korean on Korean devices (`manifest.ko.webmanifest`) and in English on others (`manifest.webmanifest`).
 
-### 테스트용 주소 꼬리표
-| 주소 끝에 | 효과 |
+### Address add-ons for testing
+| Add to the address | What it does |
 |---|---|
-| `#demo` | 가족 중 다음 생일인 사람의 생일 아침으로 시계가 맞춰짐 (생일 모드 미리 보기) |
-| `#now=2027-08-21` | 원하는 날짜로 (오늘의 질문·타임캡슐·D-day가 그 날짜 기준) |
-| `#night` / `#sunset` / `#day` | 하늘 고정 |
-| `#autumn` / `#winter` / `#green` | 계절 미리 보기 |
-| `#debug` | 콘솔에서 `__wv.goTo('tree')` 처럼 바로 이동 |
+| `#demo` | Sets the clock to the morning of the next family birthday (a preview of birthday mode) |
+| `#now=2027-08-21` | Sets any date you want (the question of the day, time capsules and D-days follow that date) |
+| `#night` / `#sunset` / `#day` | Fixes the sky |
+| `#autumn` / `#winter` / `#green` | Previews a season |
+| `#debug` | Jump straight to a place from the console, e.g. `__wv.goTo('tree')` |
+| `?lang=ko` / `?lang=en` | Opens in Korean / English (goes before any `#`, e.g. `/?lang=ko#demo`) |
 
 ---
 
-## 1. 내용 바꾸기 → `config.js`
-메모장이나 VS Code로 열어서 따옴표 안의 글자만 바꾸면 됩니다.
-- `name` (김씨네), `since` (가족이 시작된 날 → "함께한 지 ○일째"), `greeting`
-- `members` — 구성원 4~8명. **`id`는 한 번 정하면 바꾸지 마세요** (편지·답이 이 id로 저장돼요). 생일은 `'월-일'`, 모습은 `look`
-- `events` — 매년 반복은 `'월-일'` + `yearly: true`, 한 번뿐이면 `'연-월-일'`
-- `questions` — 하루 하나씩 차례로 (`questionStart`가 1번 질문 날). 문자열만 적어도 돼요
-- `polls`, `quiz`, `place`(모이는 곳), `tree`(나무가 자라는 물의 양), `museum`(사진 테마)
-- 실제로 쓸 때는 **`samples: {}`** 로 예시 데이터를 비우세요
-- 이름을 바꾸면 `index.html` 윗부분의 `<title>`·`og:title`도 같이 바꿔 주세요
+## 1. Change the content → `config.js`
+Open it in Notepad or VS Code and change only the text inside the quotes.
+- `window.FAMILY` holds the Korean text. `window.FAMILY_EN` at the end of the file holds the English text (see below).
+- `name` (김씨네), `since` (the day the family began → "together for ○ days"), `greeting`
+- `members` — people written in advance (optional, 0–8 people; `members: []` is fine). Everyone else creates their own character in the village. **Never change an `id` once it's set** (letters and answers are saved under it). Birthdays as `'month-day'`, looks in `look`
+- `events` — `'month-day'` + `yearly: true` for every year, `'year-month-day'` for a one-off day
+- `questions` — one a day, in order (`questionStart` is the day of question 1). A question can be just a string
+- `polls`, `quiz`, `place` (meeting place), `tree` (how much water the tree needs to grow), `museum` (photo themes)
+- For real use, empty the sample data with **`samples: {}`** (in `window.FAMILY_EN` too) and delete the example answers (`samples`) in `questions`
+- If you change the name, also change the top of `index.html`: `<title>` (English title), `<meta name="title-ko">` (Korean title), `description`, and `og:title` / `og:description` (the KakaoTalk link preview). The link preview has only one language; the sample's is in English.
+- The name of the app installed on a phone is in two files: `manifest.webmanifest` (English) and `manifest.ko.webmanifest` (Korean, for Korean devices). If you change the village name, change `name` and `short_name` in both. (`apple-mobile-web-app-title` in `index.html` is the iPhone home-screen name: English in `content`, Korean in `data-ko-content`.)
 
-> ⚠️ `config.js`와 사진은 **사이트 주소를 아는 누구나** 열어 볼 수 있어요. 전화번호·주소·아이 실명은 꼭 필요할 때만 넣으세요.
-> 가족 암호는 사이트 파일에 적지 않아요. 마을의 ⚙️에서 정하면 **구글 시트의 스크립트**에 저장돼요.
+> ⚠️ Anyone who knows the site address can open `config.js` and the photos. Put in phone numbers, addresses and children's real names only when you really need to.
+> The family password is not written in the site files. When you set it with ⚙️ in the village, it's saved in **the Google Sheet's script**.
 
-## 2. 사진 넣기 → `photos/` 폴더
-지금은 `demoPhotos: true` 라서 사진이 없어도 **캔버스로 그린 일러스트**가 사진관을 채웁니다.
-실제 사진은 `demoPhotos: false`로 바꾸고 `photos/테마폴더/1.jpg, 2.jpg …` 순서로 넣은 뒤 `count`를 맞춰요. (긴 변 1600px 정도로 줄이기)
+### English version → `window.FAMILY_EN`
+- Same shape as `window.FAMILY`, text only. Anything you leave out shows the Korean text.
+- Ids, dates, numbers, phone numbers, links and colors always come from `window.FAMILY`.
+- Lists (members, events, questions, polls, quiz, sample letters, photo themes) match up by position. Keep the same number and order of items as in the Korean block. Extra English items are ignored.
+- Lists of plain text (poll options, quiz options, photo captions) replace the Korean list, so keep the same number and order. Votes and quiz answers are saved as the option's number, and `answer` comes from the Korean block.
+- Write each question the same way as in the Korean block (just text, or `{ q: … }`).
+- `banner` is a short theme name for the gallery banners (English only, optional).
+- You have two choices:
+  - Write your own English text in this block, including the village name (`name`) and the member names.
+  - Delete the whole block. Everyone then sees the Korean content; buttons and menus still switch language.
+- If you change the Korean sample content (village name, member names, meeting-place address or first question) but the English block still says "The Kims" (or has no `name`), the English block is skipped. English visitors then get English buttons and menus with the Korean content.
 
-## 3. 가족 모두의 글을 한곳에 → 구글 시트
-기본(`sheet: ''`)은 쓴 글이 **그 휴대폰에만** 저장돼요. 가족끼리 서로의 편지·답·하트를 보려면
-[`tools/가족_시트_연결.md`](tools/가족_시트_연결.md) 대로 시트에 `tools/family-sheet.gs`를 붙여 웹 앱으로 배포하고, 주소를 `config.js`의 `sheet`에 넣어요. (10분)
-- 🔒 (암호를 걸었다면) 가족 암호를 맞힌 사람만 글을 읽고 쓸 수 있어요. 시트 없이 건 암호는 그 휴대폰에서만 잠기는 미리보기예요
-- 시트에서 행을 지우면 마을에서도 사라져요
-- 연결이 끊겨도 쓴 글은 휴대폰에 보관했다가 자동으로 다시 보내요
-- 타임캡슐은 열리는 날까지 내용이 내려가지 않아요
+## 2. Add photos → `photos/` folder
+Right now `demoPhotos: true`, so even with no photos, **illustrations drawn on a canvas** fill the gallery.
+For real photos, set `demoPhotos: false`, put them in `photos/<theme folder>/` as `1.jpg, 2.jpg …` in order, and set that theme's `count` to match. (Shrink them to about 1600px on the long side.)
+Photo captions go in `captions` (English ones in `window.FAMILY_EN`).
 
-> 🤖 프로그램을 몰라도 돼요: `AI에게_맡기기_프롬프트.txt`를 Claude나 ChatGPT에 붙여 넣으면 가족 정보 넣기부터 시트 연결, 인터넷에 올리기까지 AI가 단계별로 안내해요.
+## 3. Gather everyone's posts → Google Sheet
+By default (`sheet: ''`), posts are saved **only on that phone**. For the family to see each other's letters, answers and hearts,
+follow [`tools/가족_시트_연결.md`](tools/가족_시트_연결.md): paste `tools/family-sheet.gs` into a sheet, deploy it as a web app, and put its URL in `sheet` in `config.js`. (10 minutes)
+- 🔒 (If you set a password) only people who enter the family password can read and write posts. A password set without a sheet only locks that one phone, as a preview
+- Deleting a row in the sheet removes it from the village too
+- If the connection drops, posts are kept on the phone and sent again automatically
+- A time capsule's text isn't sent out until its opening day
 
-## 4. 미리보기 · 한 파일 · 인터넷에 올리기
-- **`index.html` 더블클릭** → 바로 열려요. (암호 없음, ⚙️에서 걸어 볼 수 있어요)
-- **휴대폰으로 확인**: `미리보기.bat` → 같은 와이파이의 휴대폰에서 창에 적힌 `http://192.168.…:8001`
-- `한파일로_만들기.bat` → 폴더 바로 위에 `가족마을.html` 하나 (카톡 전송용)
-- 이 저장소는 **Vercel**에 연결되어 `main`에 푸시하면 https://familyvillage.vercel.app 에 자동 배포돼요. (`배포.bat`은 명령줄로 바로 올리는 방법)
-- 카톡 미리보기 사진은 `og.jpg`, `index.html`의 `og:url`·`og:image`를 자기 주소로 바꿔 주세요
-- 검색 엔진에는 나오지 않게 해 두었어요 (`noindex`)
+> 🤖 No coding needed: paste `AI에게_맡기기_프롬프트.txt` into Claude or ChatGPT, and the AI guides you step by step, from putting in your family's details to connecting the sheet and putting the site online.
 
-## 조작법
-| | 휴대폰 | PC |
+## 4. Preview · one file · put it online
+- **Double-click `index.html`** and it opens right away. (No password; you can try setting one with ⚙️)
+- **To check on your phone:** double-click `미리보기.bat`, connect your phone to the same Wi-Fi as the PC, and type the `http://192.168.…:8001` address shown in the window.
+- `한파일로_만들기.bat` → one file, `가족마을.html`, right above the project folder (for sending by KakaoTalk)
+- This repository is connected to **Vercel**: pushing to `main` deploys it automatically to https://familyvillage.vercel.app. (`배포.bat` uploads it straight from the command line.)
+- The KakaoTalk preview picture is `og.jpg`. Change `og:url` and `og:image` in `index.html` to your own address. (With `배포.bat`, putting your address in the `SITE_URL` environment variable does this for you.)
+- It's kept out of search engines (`noindex`).
+
+## Controls
+| | Phone | PC |
 |---|---|---|
-| 걷기 | 화면 아무 곳이나 끌기 | WASD · 방향키 / 마우스로 끌기 |
-| 그 자리로 가기 | 톡 누르기 | 클릭 |
-| 구경하기 | 오른쪽 주황 버튼 / 이름표 누르기 | E · Enter |
-| 하트 | 💗 (가족 집 앞이면 그 사람에게) | H |
-| 창 닫기 | 뒤로가기 · 아래로 끌기 · ✕ | Esc |
-| 점프 / 낮·밤 | ⤴ / 메뉴 | Space / N |
+| Walk | Drag anywhere on the screen | WASD · arrow keys / drag with the mouse |
+| Go to a spot | Tap | Click |
+| Look at something | Orange button on the right / tap a name tag | E · Enter |
+| Heart | 💗 (in front of a family house, to that person) | H |
+| Close a window | Back · swipe down · ✕ | Esc |
+| Jump / day · night | ⤴ / menu | Space / N |
 
-## 파일 구성
+## Files
 ```
 FamilyVillage/
-├─ index.html               화면 뼈대 (더블클릭해서 열기)
-├─ config.js                ⭐ 가족 설정 (여기만 수정)
-├─ photos/ · music/         사진 (비어 있으면 일러스트) · 배경음악 (선택)
-├─ css/style.css            디자인 (모바일 우선, 계절마다 색이 바뀜)
-├─ js/app.js                프로그램 (src를 한 파일로 묶은 것, 3D 라이브러리 포함)
+├─ index.html               page skeleton (double-click to open)
+├─ config.js                ⭐ family settings (edit only this): window.FAMILY (Korean) + window.FAMILY_EN (English)
+├─ manifest.webmanifest · manifest.ko.webmanifest   app name when installed (English · Korean)
+├─ photos/ · music/         photos (illustrations if empty) · background music (optional)
+├─ css/style.css            design (mobile first, colors change with the season)
+├─ js/app.js                the program (src bundled into one file, 3D library included)
+├─ sw.js                    opens the last village you saw when you're offline
 ├─ 한파일로_만들기.bat · 미리보기.bat · 배포.bat
-├─ AI에게_맡기기_프롬프트.txt  Claude·ChatGPT에 붙여 넣으면 처음부터 끝까지 안내
-├─ tools/가족_시트_연결.md · tools/family-sheet.gs   가족 글을 구글 시트에 모으기
+├─ AI에게_맡기기_프롬프트.txt  paste into Claude or ChatGPT for a guide from start to finish
+├─ tools/가족_시트_연결.md · tools/family-sheet.gs   gather family posts in a Google Sheet
 ├─ tools/single.mjs · deploy-prep.mjs · demo-preview.html
 └─ src/
-   ├─ main.js      시작 화면 (⚙️ 암호 설정 · 🔒 암호 → 🙋 나 고르기), 메뉴, 출석 도장
-   ├─ game.js      3D 마을: 조작, 길 찾기, 카메라, 투어, 가족 포토존, 낮·밤, 성능 조절
-   ├─ world.js     하늘·풀밭·나무·날리는 것을 계절마다 (🌿 나비·홀씨 / 🍂 낙엽·잠자리 / ❄️ 눈·크리스마스 트리)
-   ├─ season.js    계절 고르기·기억하기 (메뉴 '계절', config season)
-   ├─ props.js     게시판·우체통·달력·투표함·퀴즈·모닥불·포토존·사진관 외관
-   ├─ houses.js    🏘️ 통나무집 골목(겨울엔 지붕 눈·전구) + 집 앞 가족 + 🌱 함께 키우는 나무
-   ├─ museum.js    사진관 내부        ├─ character.js  캐릭터 (안경·모자·아이 키)
-   ├─ ui.js        팝업, 편지·답장·반응, 퀴즈 점수판, 사진 확대
-   ├─ views.js     우리 가족·구성원 집·오늘의 질문·달력·투표·나무·꾸미기
-   ├─ family.js    구성원·생일·질문·하트·출석·나무 계산
-   ├─ store.js     글 보관 (휴대폰 ↔ 구글 시트, 보관 후 재전송)
-   ├─ textview.js  📖 글로 보기     ├─ demo-photos.js 일러스트 사진
-   ├─ sound.js     합성 마림바 · 효과음     ├─ common.js 날짜·시계·사진 목록
-   └─ vendor/      3D 라이브러리 (three.js r160, MIT 라이선스)
+   ├─ 빌드.bat       run after changing the source code → rebuilds js/app.js
+   ├─ main.js        start screen (⚙️ password settings · 🔒 password → ✨ create / 🙋 pick a character), menu, visit stamps
+   ├─ i18n.js        English / Korean: picking the language, the switch, the English config
+   ├─ game.js        3D village: controls, finding the way, camera, tour, family photo zone, day · night, performance
+   ├─ world.js       sky, grass, trees and things in the air for each season (🌿 butterflies · seeds / 🍂 leaves · dragonflies / ❄️ snow · Christmas tree)
+   ├─ season.js      picking and remembering the season (menu 'Season', config season)
+   ├─ props.js       outside of the board, mailbox, calendar, poll box, quiz, campfire, photo zone, gallery
+   ├─ houses.js      🏘️ row of log cabins (snow on the roofs and lights in winter) + family in front + 🌱 the tree we grow together
+   ├─ museum.js      inside the gallery
+   ├─ character.js   characters (glasses · hats · child height)
+   ├─ ui.js          popups, letters · replies · reactions, quiz scoreboard, photo zoom
+   ├─ views.js       our family · member houses · question of the day · calendar · polls · tree · customizing
+   ├─ family.js      members, birthdays, questions, hearts, visits, tree math
+   ├─ store.js       keeping posts (phone ↔ Google Sheet, keep and send again)
+   ├─ textview.js    📖 text view
+   ├─ demo-photos.js illustration photos
+   ├─ sound.js       synthesized marimba · sound effects
+   ├─ common.js      date and clock, photo list
+   ├─ util.js        shared 3D tools
+   └─ vendor/        3D library (three.js r160, MIT license)
 ```
-> `config.js`와 `photos`만 바꿀 때는 다시 빌드할 필요가 없어요. `src`를 고쳤을 때만 `src/빌드.bat` (Node.js 필요).
+> When you change only `config.js` and `photos`, nothing needs rebuilding. Run `src/빌드.bat` only after changing code in `src` (needs Node.js).
 
-개인·가족용 비상업 템플릿이에요. 고쳐 쓰고 나눠도 되지만 판매는 하지 말아 주세요.
+A personal, family, non-commercial template. You may change it and share it, but please don't sell it.

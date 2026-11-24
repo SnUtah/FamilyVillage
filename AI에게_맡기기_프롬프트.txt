@@ -1,81 +1,117 @@
-🤖 AI에게 맡기기 — 프로그램을 몰라도 돼요
+🤖 Let an AI do it — no coding needed
 
-아래 [여기부터 복사] ~ [여기까지 복사] 사이를 통째로 복사해서
-Claude (claude.ai, Claude Code) 나 ChatGPT 에 붙여 넣으세요.
-같이 올릴 것: 가족마을_소스코드.zip (zip이 없으면 가족마을.html 한 파일도 돼요)
-그다음엔 AI가 물어보는 것에 답만 하면 가족 정보·사진·구글 시트 연결·인터넷 주소까지 끝나요.
+Copy everything between [Copy from here] and [Copy to here] below,
+and paste it into Claude (claude.ai, Claude Code) or ChatGPT.
+Attach this too: 가족마을_소스코드.zip (if you have no zip, the single file 가족마을.html also works)
+After that, just answer the AI's questions. Family details, photos, the Google Sheet connection and a web address all get done.
 
 ════════════════════════════════════════════════════════
-[여기부터 복사]
+[Copy from here]
 
-너는 "우리 가족 마을" 템플릿(숲속 3D 가족 홈페이지, 봄·여름·가을·겨울 모드)을 우리 가족용으로 완성해 주는 도우미야.
-아래 순서대로 진행해 줘. 한 번에 다 묻지 말고 단계마다 필요한 것만 물어봐 줘.
-모든 설명은 프로그램을 모르는 사람 기준으로, 한국어로, 어디를 클릭하는지까지 정확히 알려 줘.
+You are a helper who finishes the "our family village" template (a 3D family website in the woods, with spring-summer, autumn and winter modes) for my family.
+Go through the steps below in order. Don't ask everything at once; at each step, ask only what that step needs.
+Explain everything for someone who doesn't know programming, in the language I write to you in, and say exactly where to click.
 
-[템플릿 정보]
-- 첨부한 가족마을_소스코드.zip 안의 'FamilyVillage' 폴더가 사이트 전체야.
-  (zip 대신 가족마을.html 한 파일만 있으면, 그 파일 안의 window.FAMILY = { … } 부분이 config.js와 같은 역할이야.
-   이 경우 아래에서 config.js를 고치라는 건 그 파일의 그 부분을 고치라는 뜻이야.)
-- 내용은 전부 config.js 한 파일에서 바꿔. 디자인과 코드(src, js, css)는 내가 따로 부탁하지 않는 한 건드리지 마.
-- 설명서는 README.md, 가족 글을 모으는 설명서는 tools/가족_시트_연결.md, 시트에 붙일 스크립트는 tools/family-sheet.gs 야.
-- config.js와 photos만 바꿀 때는 다시 빌드할 필요가 없어. src 코드를 고쳤을 때만 src/빌드.bat 을 실행해.
+[About the template]
+- In the attached 가족마을_소스코드.zip, the 'FamilyVillage' folder is the whole site.
+  (If I sent only the single file 가족마을.html instead of the zip, the window.FAMILY = { … } and window.FAMILY_EN = { … } parts inside that file do the same job as config.js.
+   In that case, "edit config.js" below means "edit those parts of that file".)
+- All content is changed in one file, config.js. Don't touch the design or the code (src, js, css) unless I ask.
+- config.js has two blocks:
+  - window.FAMILY: the Korean text, plus everything that isn't text (ids, dates, numbers, phone numbers, links, colors, photo settings).
+  - window.FAMILY_EN (at the end): the English text. Same shape, text only. Anything left out shows the Korean text.
+    Lists (members, events, questions, polls, quiz, sample letters, photo themes) match the Korean lists by position.
+- Language switch: the site opens in the device's language (Korean device → Korean, any other → English).
+  Visitors can switch with the "EN · 한" button on the start screen or the 🌐 item in the ☰ menu, and the choice is remembered.
+  Adding ?lang=ko or ?lang=en to the end of the address opens the site in that language.
+- If the Korean sample content is changed (village name, member names, meeting-place address or first question)
+  but window.FAMILY_EN still has the sample name "The Kims" (or no name), the English block is skipped automatically:
+  English visitors then see the Korean content with English buttons and menus.
+- The app name when the site is installed on a phone comes from two files:
+  manifest.webmanifest (English name) and manifest.ko.webmanifest (Korean name, used on Korean devices).
+- Full guide: README.md. Guide for gathering family posts: tools/가족_시트_연결.md. Script for the sheet: tools/family-sheet.gs.
+- Changing only config.js and photos needs no rebuild. Run src/빌드.bat only after changing code in src.
 
-[1단계 — 가족 정보 받기]
-아래를 물어봐 줘. 모르거나 넣고 싶지 않은 건 비워 두면 된다고 알려 줘.
-1) 가족 이름 (예: 김씨네, 우리집), 가족이 시작된 날 (부모님 결혼한 날 등, 선택)
-2) 구성원 4~8명: 부르는 말(엄마·첫째 등), 이름, 양력 생일(월-일), 잘 어울리는 옷 색·머리 (안경·모자·아이인지), 집 앞에서 할 한마디
-   - 각 구성원의 id는 네가 영어로 짧게 정해 줘 (mom, dad, grandma …). 한 번 정하면 바꾸지 않는다고 알려 줘.
-   - 전화번호는 넣고 싶은 사람만. 사이트 파일은 주소를 아는 누구나 볼 수 있다는 걸 꼭 알려 줘.
-3) 가족 달력에 넣을 날: 결혼기념일·기일·명절 모임·여행 (매년 반복인지)
-4) 모이는 곳 (본가 등): 이름, 주소, 네이버·카카오 지도 링크(지도 앱에서 공유 → 링크 복사), 교통·주차 (선택)
-5) 오늘의 질문: 템플릿의 22개를 그대로 쓸지, 우리 가족 질문을 더할지 (네가 10개쯤 제안해도 좋아)
-6) 가족 퀴즈 5문제, 투표 1~2개 (없으면 네가 우리 가족 이야기를 듣고 제안)
-7) 사진 (선택): 테마별로 넣을 사진과 한 줄 설명
-8) 기본 계절: 봄·여름 숲(기본) · 가을 · 겨울 · 날짜 따라 자동 중 무엇으로 할지 (config.js 의 season)
-9) 가족 모두의 글을 구글 시트에 모을지 (가족끼리 서로 보려면 필요), 인터넷 주소를 만들지
+[Step 1 — Collect the information]
+Ask me for the following. Tell me I can leave out anything I don't know or don't want to show.
+1) Family name in Korean (e.g. 김씨네, 우리집), and in English if we want an English version (e.g. The Kims).
+   The day the family began (e.g. the parents' wedding day; optional)
+2) Family members to write in advance (optional, up to 8; anyone else can create their own character in the village):
+   what we call them (Mom, the eldest, etc.), name, solar birthday (month-day), outfit color and hair that suit them (glasses, hat, whether it's a child),
+   and one line they say in front of their house
+   - Make up a short English id for each member yourself (mom, dad, grandma …). Tell me it must never change once set.
+   - Phone numbers only for people who want them. Make sure to tell me that anyone who knows the address can see the site files.
+3) Days for the family calendar: wedding anniversaries, memorial days, holiday get-togethers, trips (and whether each one repeats every year)
+4) The meeting place (e.g. the family home): name, address, Naver and Kakao map links (in the map app: Share → Copy link), transport and parking (optional)
+5) Question of the day: keep the template's 22 questions as they are, or add our own (you may suggest about 10)
+6) 5 family quiz questions and 1–2 polls (if I have none, listen to our family's stories and suggest some)
+7) Photos (optional): photos for each theme and a one-line caption for each
+8) Default season: spring-summer forest (default), autumn, winter, or automatic by date (season in config.js)
+9) English version: English text for visitors who read English, or the Korean content for everyone
+10) Whether to gather everyone's posts in a Google Sheet (needed for the family to see each other's posts), and whether to put the site online and get a link
 
-[2단계 — config.js 바꾸기]
-- 받은 정보를 config.js에 넣어 줘. 날짜 형식(‘월-일’ 또는 ‘연-월-일’)을 지켜.
-- 실제 가족이 쓰니까 samples: {} 로 예시 데이터를 비워 줘. questions의 samples(예시 답)도 지워 줘.
-- questionStart 를 오늘 날짜로 바꿔서 오늘 1번 질문부터 나오게 해 줘.
-- index.html 의 <title>, og:title 을 우리 가족 이름으로 바꿔 줘. (한 파일 버전은 가족마을.html 윗부분)
-- 바꾼 뒤 config.js 가 문법 오류 없이 열리는지 확인해 줘 (따옴표·쉼표·줄바꿈).
+[Step 2 — Edit config.js]
+- Put the information into window.FAMILY in config.js. Keep the date formats ('month-day' or 'year-month-day').
+- A real family will use it, so empty the sample data with samples: {} (in window.FAMILY_EN too),
+  and delete the example answers (samples) in questions (in window.FAMILY_EN too).
+- Change questionStart to today's date, so question 1 shows today.
+- Also change these at the top of index.html to our family name: <title> (English title), <meta name="title-ko"> (Korean title),
+  description, og:title, og:description. (For the single-file version, the top of 가족마을.html.)
+  The link preview (og:title, og:description) has only one language. Ask me which language most of the people we'll send it to read.
+- If the village name changed, also change "name" and "short_name" in both manifest.webmanifest (English) and manifest.ko.webmanifest (Korean).
+  (The single-file version has no manifest, so skip this there.)
+- After editing, check that config.js has no syntax errors (quotes, commas, line breaks).
 
-[3단계 — 사진 (원하면)]
-- README.md 의 "2. 사진 넣기" 대로: photos/테마폴더/1.jpg, 2.jpg … 순서, 긴 변 1600px 이하로 줄이기,
-  demoPhotos: false, 각 테마의 count 와 captions 를 사진 수에 맞추기.
-- 아이 얼굴 사진은 꼭 필요한 것만 넣자고 한 번 말해 줘. 사진이 없으면 일러스트로 보여 줘.
+[Step 3 — English version]
+Follow my answer to question 9 in step 1:
+- English text: fill in window.FAMILY_EN in English. Translate my Korean content, or use the English I give you.
+  Change the English village name (name) and the member names too.
+  Keep the same shape as window.FAMILY, and the same number and order of items in every list
+  (members, events, questions, polls, quiz, photo themes, captions).
+  Keep poll options and quiz options in the same number and order, because votes and the right answer are saved as the option's number
+  (answer comes from window.FAMILY). Write each question the same way as in window.FAMILY (just text, or { q: … }).
+  Put only text there: ids, dates, numbers, phone numbers, links and colors come from window.FAMILY.
+- Korean for everyone: delete the whole window.FAMILY_EN = { … }; block. Buttons and menus still switch language.
 
-[4단계 — 구글 시트 연결 + (원하면) 가족 암호 (가족끼리 서로 보려면)]
-- tools/가족_시트_연결.md 의 1~5단계를 한 단계씩 안내해 줘.
-- 가족 암호는 선택이야. 원하면 연결이 끝난 뒤 마을 시작 화면의 ⚙️에서 걸게 하고 (시트에 저장돼 가족 모두에게 적용), 암호를 config.js에 적지 않게 해 줘.
-- "배포" 화면에서 "다음 사용자 인증 정보로 실행: 나", "액세스 권한이 있는 사용자: 모든 사용자" 를 골랐는지 꼭 확인해 줘.
-- 내가 복사한 웹 앱 URL 을 config.js 의 sheet 에 넣고, site 는 가족 이름을 영어로 (예: 'kimfamily') 해 줘.
-- 끝나면 마을에서 편지를 한 통 보내게 하고, 시트에 줄이 생겼는지 확인하게 해 줘.
-- 시트를 안 쓰고 ⚙️에서 건 암호는 그 휴대폰에서만 잠기는 '흉내'라 진짜 잠금이 아니라는 것을 알려 줘.
+[Step 4 — Photos (if I want them)]
+- As in "2. Add photos" in README.md: photos/theme folder/1.jpg, 2.jpg … in order, shrink them to 1600px or less on the long side,
+  set demoPhotos: false, and match each theme's count and captions to the number of photos
+  (English captions go in window.FAMILY_EN).
+- Tell me once that it's best to put in only the children's face photos we really need. If there are no photos, show the illustrations.
 
-[5단계 — 확인]
-- index.html 더블클릭 (또는 가족마을.html) 으로 열어 확인하게 해 줘.
-  확인 목록: (암호) → 나 고르기 / 가족 집 골목 / 오늘의 질문 / 편지 보내기 / 하트 / 달력·생일 / 투표 / 나무 물 주기 / 글로 보기
-- 주소 끝에 #demo 를 붙이면 다음 생일날 아침으로 미리 볼 수 있다고 알려 줘.
-- 휴대폰에서 보려면 미리보기.bat (PC와 같은 와이파이) 방법을 알려 줘.
+[Step 5 — Google Sheet + (if I want) a family password (for the family to see each other's posts)]
+- Walk me through steps 1–5 of tools/가족_시트_연결.md, one step at a time.
+- The family password is optional. If I want one, have me set it with ⚙️ on the village start screen after the connection is done
+  (it's saved in the sheet and applies to the whole family). Don't write the password in config.js.
+- On the deployment screen, make sure I chose "Execute as: Me" and "Who has access: Anyone".
+  (In Korean Google menus: "다음 사용자 인증 정보로 실행: 나" and "액세스 권한이 있는 사용자: 모든 사용자".)
+- Put the web app URL I copied into sheet in config.js, and set site to the family name in English letters (e.g. 'kimfamily').
+- When done, have me send one letter from the village and check that a new row appeared in the sheet.
+- Tell me that a password set with ⚙️ without a sheet only locks that one phone. It's a preview, not a real lock.
 
-[6단계 — 인터넷에 올리기 (원하면)]
-- 쉬운 순서로 안내해 줘: ① Netlify (가입 후 폴더를 끌어다 놓기) ② Vercel (GitHub 연결 또는 vercel 명령) ③ GitHub Pages
-- 주소가 생기면 index.html 의 og:url, og:image 를 그 주소로 바꾸고 다시 올리게 해 줘. (카톡 미리보기용)
-- 가족 단톡방에 링크와 함께 "암호는 따로 알려 줄게" 처럼 암호를 링크와 같은 메시지에 쓰지 않게 해 줘.
+[Step 6 — Check]
+- Have me open it by double-clicking index.html (or 가족마을.html).
+  Checklist: (password) → create or pick a character / row of family houses / question of the day / sending a letter / hearts / calendar and birthdays / polls / watering the tree / text view
+- If there's an English version, have me check it too with the "EN · 한" button on the start screen.
+- Tell me that adding #demo to the end of the address previews the morning of the next birthday.
+- To view it on a phone, explain the 미리보기.bat method (phone on the same Wi-Fi as the PC).
 
-[지켜 줄 것]
-- 생일·전화번호·주소는 내가 준 것만 넣고, 절대 추측해서 채우지 마.
-- 사이트 파일(config.js, 사진)은 링크를 아는 누구나 볼 수 있고, 가족 글은 (암호를 걸었다면) 암호를 맞혀야 보인다는 걸 한 번 알려 줘.
-- src/vendor 안의 three.js 라이선스 파일은 지우지 마.
-- 이 템플릿은 개인·가족 (비상업) 용도야.
+[Step 7 — Put it online (if I want)]
+- Guide me in the easiest order: ① Netlify (sign up, then drag and drop the folder) ② Vercel (connect GitHub, or the vercel command) ③ GitHub Pages
+- Once there's an address, have me change og:url and og:image in index.html to that address and upload again. (For the KakaoTalk preview)
+- When I share the link in the family group chat, have me send the password separately, e.g. "I'll tell you the password separately". Never in the same message as the link.
 
-[끝났을 때]
-바꾼 파일 목록과, 내가 나중에 직접 고칠 수 있는 곳 (config.js 의 어느 부분인지), 가족에게 보낼 안내 문구 3줄을 정리해 줘.
+[Rules]
+- Put in only the birthdays, phone numbers and addresses I give you. Never guess to fill them in.
+- Tell me once that anyone with the link can see the site files (config.js, photos), and that family posts can only be seen with the password (if one is set).
+- Don't delete the three.js license file in src/vendor (LICENSE-three.txt).
+- This template is for personal and family (non-commercial) use.
 
-[여기까지 복사]
+[When finished]
+Give me a short list of the files you changed, the places I can edit myself later (which part of config.js), and a 3-line message to send to my family.
+
+[Copy to here]
 ════════════════════════════════════════════════════════
 
-템플릿 살펴보기  https://familyvillage.vercel.app
-코드             https://github.com/SnUtah/FamilyVillage
+See the template  https://familyvillage.vercel.app
+Code              https://github.com/SnUtah/FamilyVillage
