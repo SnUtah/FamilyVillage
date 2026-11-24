@@ -1,13 +1,16 @@
 import * as THREE from 'three';
+import { L } from './i18n.js';
 import { toon, mesh } from './util.js';
 
-/* 동글동글한 2등신 캐릭터
-   type: 'player'(나) | 'family'(집 앞에 서 있는 이웃)
-   처음 들어올 때 '내 캐릭터 만들기'에서 고르는 값:
-     hairStyle 'short'|'buzz'|'bob'|'long'|'ponytail'|'bun'|'pigtails'|'curly' · hair 머리 색 · skin 피부색
-     gender 'f'|'m'|'' (f = 속눈썹) · age 'kid'|'teen'|'adult'|'senior' · outfit 옷 색 · glasses 안경 · hat 'cap'|'beanie'|'flower'
-   (예전 값 longHair·kid 도 그대로 알아들어요) · shadows false면 그림자 생략(가볍게) */
-export const HAIR_STYLES = [['short', '짧은 머리'], ['buzz', '아주 짧게'], ['bob', '단발'], ['long', '긴 머리'], ['ponytail', '묶은 머리'], ['bun', '올림 머리'], ['pigtails', '양갈래'], ['curly', '뽀글 파마']];
+/* Round, two-heads-tall character
+   type: 'player' (me) | 'family' (a neighbor standing in front of their house)
+   Values picked in 'Create my character' on the first visit:
+     hairStyle 'short'|'buzz'|'bob'|'long'|'ponytail'|'bun'|'pigtails'|'curly' · hair color · skin color
+     gender 'f'|'m'|'' (f = eyelashes) · age 'kid'|'teen'|'adult'|'senior' · outfit color · glasses · hat 'cap'|'beanie'|'flower'
+   (the older values longHair · kid are still understood) · shadows false = no shadows (lighter)
+   HAIR_STYLES: the first value of each pair is what gets saved; only the label is translated */
+export const HAIR_STYLES = L([['short', '짧은 머리'], ['buzz', '아주 짧게'], ['bob', '단발'], ['long', '긴 머리'], ['ponytail', '묶은 머리'], ['bun', '올림 머리'], ['pigtails', '양갈래'], ['curly', '뽀글 파마']],
+  [['short', 'Short'], ['buzz', 'Buzz cut'], ['bob', 'Bob'], ['long', 'Long'], ['ponytail', 'Ponytail'], ['bun', 'Bun'], ['pigtails', 'Pigtails'], ['curly', 'Curly']]);
 export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#5A3A2A', skin = '#FFE0C7', longHair = false, hairStyle = '', gender = '', age = '', glasses = false, hat = '', kid = false, shadows = true } = {}) {
   const style = hairStyle || (longHair ? 'long' : 'short');
   if (age === 'kid') kid = true;
@@ -16,12 +19,12 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
   root.add(body);
   if (kid) body.scale.setScalar(0.8);
   else if (age === 'teen') body.scale.setScalar(0.9);
-  else if (age === 'senior') body.rotation.x = 0.07;   // 살짝 구부정
+  else if (age === 'senior') body.rotation.x = 0.07;   // a slight stoop
 
   const top = outfit;
   const pants = '#6B5B53';
 
-  /* 다리 */
+  /* legs */
   const legGeo = new THREE.CapsuleGeometry(0.1, 0.28, 4, 8);
   const shoeGeo = new THREE.SphereGeometry(0.13, 12, 8);
   const legs = [];
@@ -36,12 +39,12 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     legs.push(pivot);
   }
 
-  /* 몸통 */
+  /* body */
   const torso = mesh(new THREE.CapsuleGeometry(0.3, 0.3, 6, 14), top, 0, 0.86, 0);
   torso.scale.set(1, 1, 0.85);
   body.add(torso);
 
-  /* 팔 */
+  /* arms */
   const armGeo = new THREE.CapsuleGeometry(0.075, 0.3, 4, 8);
   const handGeo = new THREE.SphereGeometry(0.085, 10, 8);
   const arms = [];
@@ -56,7 +59,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     arms.push(pivot);
   }
 
-  /* 머리 */
+  /* head */
   const head = new THREE.Group();
   head.position.y = 1.5;
   body.add(head);
@@ -85,7 +88,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     tie.rotation.x = 0.4;
     head.add(tie);
   } else if (style === 'bun') {
-    const low = hat === 'cap' || hat === 'beanie';   // 모자를 쓰면 쪽머리를 뒤로 내려서
+    const low = hat === 'cap' || hat === 'beanie';   // with a hat on, the bun moves lower and back
     hairPart(ball(0.2), 0, low ? 0.02 : 0.42, low ? -0.46 : -0.2);
     const tie = mesh(new THREE.TorusGeometry(0.15, 0.03, 6, 14), outfit, 0, low ? 0.02 : 0.32, low ? -0.36 : -0.17);
     tie.rotation.x = low ? 0 : Math.PI / 2 - 0.5;
@@ -104,7 +107,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     if (hat !== 'cap' && hat !== 'beanie') hairPart(ball(0.2), 0, 0.4, -0.04, 1.4, 0.8, 1.3);
   }
 
-  // 눈, 볼
+  // eyes, cheeks
   const eyeGeo = new THREE.SphereGeometry(0.05, 10, 8);
   const eyeMat = new THREE.MeshBasicMaterial({ color: '#2B2220' });
   const eyes = [];
@@ -122,7 +125,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     cheek.rotation.y = 0.55 * s;
     head.add(cheek);
   }
-  if (gender === 'f') {   // 속눈썹 (눈 바깥쪽 한 가닥)
+  if (gender === 'f') {   // eyelashes (one stroke at the outer corner of each eye)
     for (const sx of [-1, 1]) {
       const lash = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.014, 0.01), eyeMat);
       lash.position.set(0.2 * sx, 0.085, 0.37); lash.rotation.z = 0.5 * sx;
@@ -134,7 +137,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
   mouth.rotation.z = Math.PI;
   head.add(mouth);
 
-  /* 안경 */
+  /* glasses */
   if (glasses) {
     const rimMat = toon('#4A3B38');
     const rimGeo = new THREE.TorusGeometry(0.085, 0.014, 6, 18);
@@ -143,7 +146,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     bridge.position.set(0, 0.05, 0.42);
     head.add(bridge);
   }
-  /* 모자 */
+  /* hat */
   const hatGroup = new THREE.Group();
   head.add(hatGroup);
   function buildHat(kind) {
@@ -175,7 +178,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
 
   root.traverse(o => { if (o.isMesh && o.material !== eyeMat) o.castShadow = shadows; });
 
-  /* ---------- 애니메이션 ---------- */
+  /* ---------- Animation ---------- */
   let phase = 0, blinkT = 2 + Math.random() * 3, waveT = 0, idleT = 0;
   const armBase = arms[1].rotation.clone();
   const st = { root, body, head, arms, legs, type };
@@ -191,20 +194,20 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     body.position.y = Math.abs(Math.sin(phase)) * 0.07 * s + Math.sin(time * 2) * 0.012;
     body.rotation.z = Math.sin(phase) * 0.04 * s;
     head.rotation.z = Math.sin(time * 1.3) * 0.04;
-    // 가만히 서 있으면 잠시 뒤 두리번거리기 (나만 — 집 앞 가족은 나를 바라봄)
+    // after standing still for a while, look around (me only — the family by their houses look at me)
     if (type === 'player') {
       idleT = s < 0.05 ? idleT + dt : 0;
       const look = idleT > 4 ? Math.sin(time * 0.8) * 0.45 : 0;
       head.rotation.y += (look - head.rotation.y) * Math.min(1, dt * 4);
     }
 
-    // 깜빡임
+    // blinking
     blinkT -= dt;
     const blink = blinkT < 0.12 ? 0.15 : 1;
     eyes.forEach(e => (e.scale.y = 1.3 * blink));
     if (blinkT < 0) blinkT = 2 + Math.random() * 3;
 
-    // 손 흔들기
+    // waving
     if (waveT > 0) {
       waveT -= dt;
       const arm = arms[1];
@@ -214,7 +217,7 @@ export function createCharacter({ type = 'player', outfit = '#8FB8DE', hair = '#
     }
   };
   st.wave = (dur = 1.6) => { waveT = dur; };
-  /* 생일엔 고깔모자 (원래 모자는 잠시 벗어 둠) */
+  /* party hat on a birthday (the usual hat comes off for a while) */
   st.setParty = on => buildHat(on ? 'party' : hat);
   return st;
 }

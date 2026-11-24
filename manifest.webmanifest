@@ -1,8 +1,8 @@
 {
-  "name": "우리 가족 마을",
-  "short_name": "가족 마을",
-  "description": "숲속 우리 가족 마을 — 오늘의 질문, 하트, 가족 나무",
-  "lang": "ko",
+  "name": "Our Family Village",
+  "short_name": "Family Village",
+  "description": "Our family village in the woods — question of the day, hearts, family tree",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

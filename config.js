@@ -1,31 +1,33 @@
 /* =========================================================
-   🏡 가족 마을 설정 파일
-   이 파일만 수정하면 가족 이름·생일·질문·사진·투표가 모두 바뀝니다.
-   (따옴표 ' ' 안의 글자만 바꿔주세요)
+   🏡 Family village settings
+   Edit only this file and the family names, birthdays, questions, photos and polls all change.
+   (Change only the text inside the quotes ' ')
+   The Korean text is in window.FAMILY; the English version is in window.FAMILY_EN at the end.
 
-   ※ 아래 내용은 모두 가상의 예시 가족입니다. (템플릿 공유용 샘플)
-   ⚠️ 이 파일은 사이트 주소를 아는 사람이면 누구나 열어 볼 수 있어요.
-      전화번호·주소처럼 민감한 정보는 꼭 필요할 때만 넣으세요.
+   ※ Everything below is a made-up example family. (Sample for sharing the template)
+   ⚠️ Anyone who knows the site address can open this file.
+      Put in private details such as phone numbers and addresses only when you really need them.
    ========================================================= */
 window.FAMILY = {
-  /* ---------- 우리 가족 ---------- */
-  name: '김씨네',                 // 마을 이름에 붙어요 → "김씨네 마을"
-  since: '1998-04-25',            // 가족이 시작된 날 (부모님 결혼한 날 등) → "함께한 지 ○일"
+  /* ---------- Our family ---------- */
+  name: '김씨네',                 // goes into the village name → "김씨네 마을" (English: "The Kims' Village")
+  since: '1998-04-25',            // the day the family began (e.g. the parents' wedding day) → "together for ○ days"
   greeting: `바쁜 하루 끝에
 잠깐 들러서 안부 한마디 남겨 주세요.
 
 오늘의 질문에 답하고, 서로에게 하트를 보내고,
 우리 가족 나무에 물도 주고 가요 🌱`,
 
-  /* ---------- 미리 적어 두는 구성원 (선택, 0~8명) ----------
-     비워 둬도 돼요 (members: []). 마을에 처음 들어온 사람은 '✨ 내 캐릭터 만들기'에서 닉네임·성별·나이·
-     피부색·머리 모양을 정하고, 그러면 집이 하나씩 생겨요 (10채까지). 가족이 아닌 모임·동아리도 그대로 쓸 수 있어요.
-     아래 5명은 예시 이웃이에요. 미리 적어 두면 생일·연락처·집 앞에서 하는 말을 정할 수 있어요.
-     id      : 영어·숫자로 된 짧은 별명 (한 번 정하면 바꾸지 마세요. 편지·답이 이 id로 저장돼요)
-     birthday: 양력 생일 '월-일' (음력이면 올해 양력 날짜로 적고 lunar: true)
-     phone   : 비워 두면 연락 버튼이 안 보여요
-     look    : 마을에서의 모습 (outfit 옷 색, hair 머리색, longHair 긴 머리, glasses 안경, hat 'cap'·'beanie'·'flower', kid 아이 키)
-     line    : 집 앞에서 하는 말 */
+  /* ---------- Members written in advance (optional, 0–8 people) ----------
+     You can leave it empty (members: []). Anyone who enters the village for the first time picks a nickname, gender, age,
+     skin color and hair style in '✨ Create my character', and a house appears for them (up to 10 houses).
+     Groups and clubs that are not families can use it just the same.
+     The 5 people below are example neighbors. Writing people in advance lets you set their birthday, phone and what they say by their house.
+     id      : a short nickname in English letters and numbers (never change it once set; letters and answers are saved under this id)
+     birthday: solar birthday 'month-day' (for a lunar birthday, write this year's solar date and add lunar: true)
+     phone   : left empty, the call buttons are hidden
+     look    : how they look in the village (outfit color, hair color, longHair, glasses, hat 'cap' · 'beanie' · 'flower', kid = child height)
+     line    : what they say in front of their house */
   members: [
     { id: 'grandma', name: '김할머니', role: '할머니', emoji: '👵', birthday: '12-03', phone: '',
       look: { outfit: '#C9B3E6', hair: '#E8E4DE', longHair: false, glasses: true, hat: 'flower' }, line: '밥은 먹고 다니냐? 🍚' },
@@ -39,13 +41,14 @@ window.FAMILY = {
       look: { outfit: '#F7D58B', hair: '#7A5238', longHair: true, glasses: false, hat: 'beanie', kid: true }, line: '시험 끝났다!! 🎉' },
   ],
 
-  /* ---------- 🔒 가족 암호는 여기서 정하지 않아요 ----------
-     기본은 암호 없이 누구나 들어와요. 걸고 싶으면 마을 시작 화면의 ⚙️(또는 메뉴 → 가족 암호)에서
-     암호와 힌트를 정하세요. 구글 시트를 연결했으면 가족 모두에게 적용되고 (시트에 저장),
-     시트가 없으면 그 휴대폰에서만 잠기는 미리보기용이에요. 사이트 파일에는 암호가 남지 않아요. */
+  /* ---------- 🔒 The family password is not set here ----------
+     By default anyone can come in without a password. To set one, use ⚙️ on the village start screen
+     (or menu → Family password) and choose a password and a hint. With a Google Sheet connected it applies
+     to the whole family (saved in the sheet); without a sheet it only locks that one phone, as a preview.
+     The password is never stored in the site files. */
 
-  /* ---------- 📅 가족 달력 (생일은 위 구성원에서 자동으로 들어가요) ----------
-     date: 매년 반복이면 '월-일' + yearly: true, 한 번뿐이면 '연-월-일' */
+  /* ---------- 📅 Family calendar (birthdays are added automatically from the members above) ----------
+     date: 'month-day' + yearly: true for every year, 'year-month-day' for a one-off day */
   events: [
     { title: '엄마 ♥ 아빠 결혼기념일', date: '04-25', yearly: true, emoji: '💍' },
     { title: '할아버지 기일', date: '09-17', yearly: true, emoji: '🕯️', note: '본가에서 저녁 7시' },
@@ -54,7 +57,7 @@ window.FAMILY = {
     { title: '추석 · 본가 모이기', date: '2027-09-15', emoji: '🌕' },
   ],
 
-  /* ---------- 🗺️ 모이는 곳 (본가·명절 장소) ---------- */
+  /* ---------- 🗺️ Meeting place (the family home, where you gather for holidays) ---------- */
   place: {
     name: '할머니 댁 (본가)',
     address: '경기도 행복시 사랑로 45',
@@ -68,9 +71,9 @@ window.FAMILY = {
     parking: '집 앞 골목 2대, 넘치면 사랑초등학교 운동장 (주말 개방)',
   },
 
-  /* ---------- 💬 오늘의 질문 ----------
-     하루에 하나씩 차례로 나와요 (questionStart 날짜가 1번 질문).
-     samples = 예시 답 (실제로 쓸 땐 지우세요). 문자열만 적어도 돼요. */
+  /* ---------- 💬 Question of the day ----------
+     One a day, in order (the questionStart date gets question 1).
+     samples = example answers (delete them for real use). A question can also be just a string. */
   questionStart: '2026-11-01',
   questions: [
     { q: '어릴 때 제일 좋아했던 반찬은?', samples: { grandma: '고등어조림. 그땐 귀했지', mom: '계란말이! 지금도 좋아해', youngest: '소시지 볶음 🌭' } },
@@ -97,13 +100,13 @@ window.FAMILY = {
     { q: '우리 가족만의 규칙을 하나 만든다면?', samples: { dad: '일요일 저녁은 다 같이 먹기', first: '다투면 그날 안에 화해 🤝' } },
   ],
 
-  /* ---------- 🗳️ 가족 투표함 (마을에서 새 투표를 만들 수도 있어요) ---------- */
+  /* ---------- 🗳️ Family polls (new polls can also be made in the village) ---------- */
   polls: [
     { id: 'trip', q: '여름 가족 여행, 어디로 갈까요?', options: ['강릉 바다 🌊', '제주도 🍊', '캠핑 ⛺', '집에서 쉬기 🛋️'] },
     { id: 'dinner', q: '이번 모임 저녁 메뉴는?', options: ['갈비찜', '회', '중국집', '치킨'] },
   ],
 
-  /* ---------- ❓ 가족 퀴즈 (answer는 0부터 시작하는 정답 번호) ---------- */
+  /* ---------- ❓ Family quiz (answer = number of the right option, counting from 0) ---------- */
   quiz: [
     { q: '아빠의 첫 차는 무슨 색이었을까요?', options: ['흰색', '은색', '빨간색', '파란색'], answer: 2, comment: '빨간 소형차! 사진관에 사진도 있어요 🚗' },
     { q: '할머니가 제일 좋아하시는 꽃은?', options: ['장미', '국화', '수국', '안개꽃'], answer: 2, comment: '마당에 수국이 가득해요 💠' },
@@ -112,20 +115,20 @@ window.FAMILY = {
     { q: '우리 가족 첫 여행지는?', options: ['부산', '경주', '속초', '전주'], answer: 1, comment: '불국사 앞에서 찍은 사진 기억나요?' },
   ],
 
-  /* ---------- 🌱 함께 키우는 나무 ----------
-     가족이 하루에 한 번씩 물을 줄 수 있고, 모인 물의 양에 따라 자라요.
-     stages = [새싹, 묘목, 나무, 꽃, 열매]가 되는 물의 양 */
+  /* ---------- 🌱 The tree we grow together ----------
+     Each family member can water it once a day, and it grows with the water collected.
+     stages = how much water it takes to become [sprout, sapling, tree, blossoms, fruit] */
   tree: { name: '우리 가족 나무', stages: [3, 10, 25, 45, 80] },
 
-  /* ---------- 구글 시트 연결 (선택) ----------
-     비워 두면 편지·답·하트는 그 휴대폰에만 저장돼요 (미리보기용).
-     가족 모두가 서로의 글을 보려면 tools/가족_시트_연결.md 대로 시트에 스크립트를 붙여 배포한 뒤
-     그 '웹 앱 URL'을 sheet에 넣으세요. site = 시트 안에서 이 가족을 구분하는 이름 */
+  /* ---------- Connecting a Google Sheet (optional) ----------
+     Left empty, letters, answers and hearts are saved only on that phone (for previewing).
+     For the whole family to see each other's posts, attach the script to a sheet and deploy it as in
+     tools/가족_시트_연결.md, then put its 'web app URL' in sheet. site = the name that tells this family apart inside the sheet */
   sheet: '',
   site: 'kimfamily',
 
-  /* ---------- 예시 데이터 (실제로 쓸 때는 samples: {} 로 비우세요) ----------
-     from/to/who = 위 구성원 id, daysAgo = 며칠 전, openInDays = 타임캡슐이 열리기까지 남은 날 */
+  /* ---------- Example data (empty it to samples: {} for real use) ----------
+     from/to/who = member ids above, daysAgo = how many days ago, openInDays = days until a time capsule opens */
   samples: {
     letters: [
       { from: 'mom', to: 'all', daysAgo: 0, message: '이번 주말에 다들 본가 오는 거지?\n갈비찜 넉넉히 해 놓을게. 늦지 말고 와 🍖' },
@@ -165,20 +168,20 @@ window.FAMILY = {
     ],
   },
 
-  /* ---------- 계절: 'green'(🌿 봄·여름 숲, 기본) · 'autumn'(🍂 가을) · 'winter'(❄️ 겨울)
-     · 'auto'(날짜에 따라: 3~8월 봄·여름, 9~11월 가을, 12~2월 겨울)
-     가족이 메뉴의 '계절'로 직접 바꿀 수도 있고, 바꾼 계절은 그 휴대폰이 기억해요. ---------- */
+  /* ---------- Season: 'green' (🌿 spring–summer forest, default) · 'autumn' (🍂) · 'winter' (❄️)
+     · 'auto' (by date: Mar–Aug spring–summer, Sep–Nov autumn, Dec–Feb winter)
+     The family can also change it with 'Season' in the menu, and that phone remembers the choice. ---------- */
   season: 'green',
 
-  /* ---------- 하늘: 'day'(항상 낮) · 'dusk' · 'night' · 'auto'(접속 시각에 따라) ---------- */
+  /* ---------- Sky: 'day' (always day) · 'dusk' · 'night' · 'auto' (by the time of the visit) ---------- */
   skyMode: 'day',
 
-  /* ---------- 배경음악 (예: 'music/bgm.mp3', 비우면 합성 오르골) ---------- */
+  /* ---------- Background music (e.g. 'music/bgm.mp3'; empty = synthesized music box) ---------- */
   bgm: '',
 
-  /* ---------- 가족 사진관 ----------
-     demoPhotos: true  → 사진 폴더가 비어 있어도 캔버스로 그린 일러스트로 채워집니다.
-     실제 사진을 쓰려면 false로 바꾸고 photos/테마폴더 에 1.jpg, 2.jpg ... 순서로 넣으세요. */
+  /* ---------- Family photo gallery ----------
+     demoPhotos: true  → even with empty photo folders, it fills up with illustrations drawn on a canvas.
+     To use real photos, change it to false and put them in photos/<theme folder> as 1.jpg, 2.jpg ... in order. */
   demoPhotos: true,
   museum: {
     title: '우리 가족 사진관',
@@ -212,6 +215,131 @@ window.FAMILY = {
         subtitle: '앨범 속에서 꺼낸 시간',
         folder: 'photos/old', count: 6, ext: 'jpg',
         captions: ['할머니 할아버지 결혼식', '엄마 아빠 첫 데이트', '신혼집 앞에서', '첫째가 태어난 날', '옛날 우리 집', '빛바랜 가족사진'],
+      },
+    ],
+  },
+};
+
+/* =========================================================
+   🌐 English version of the text above.
+   Same shape; only text. Anything left out shows the Korean text.
+   Lists of options (polls, quiz) must keep the same number and order as above.
+   banner = a short theme name for the gallery banners (English only, optional).
+   Changed the village name above? Change the English names too, or delete this block to show the Korean content to everyone.
+   (Ids, dates, numbers, phone numbers, links and colors are taken from above.)
+   ========================================================= */
+window.FAMILY_EN = {
+  name: 'The Kims',               // → "The Kims' Village"
+  greeting: `At the end of a busy day,
+stop by and say hello.
+
+Answer the question of the day,
+send each other hearts
+and water our family tree 🌱`,
+
+  members: [
+    { name: 'Grandma Kim', role: 'Grandma', line: 'Are you eating properly? 🍚' },
+    { name: 'Dad Kim', role: 'Dad', line: "Don't catch a cold!" },
+    { name: 'Mom Kim', role: 'Mom', line: 'Galbi-jjim this weekend 🍖' },
+    { name: 'Eldest Kim', role: 'Eldest', line: 'Working late all week 😵' },
+    { name: 'Youngest Kim', role: 'Youngest', line: 'Exams are over!! 🎉' },
+  ],
+
+  events: [
+    { title: "Mom ♥ Dad's anniversary" },
+    { title: "Grandpa's memorial service", note: 'At the family home, 19:00' },
+    { title: "Lunar New Year at Grandma's" },
+    { title: 'Summer family trip', note: '3 days, 2 nights' },
+    { title: "Chuseok at Grandma's" },
+  ],
+
+  place: {
+    name: "Grandma's house (the family home)",
+    address: '45 Sarang-ro, Haengbok-si, Gyeonggi-do',
+    subway: ['Line 1, Haengbok Station Exit 2, 10 min walk'],
+    bus: ['Local bus 3 · Get off at Sarang-ro entrance'],
+    car: 'Search for "45 Sarang-ro, Haengbok-si" in your navigation app',
+    parking: "Room for 2 cars in the alley out front. If it's full, use the Sarang Elementary School playground (open on weekends)",
+  },
+
+  questions: [
+    { q: 'What was your favorite side dish as a kid?', samples: { grandma: 'Braised mackerel. It was a treat back then', mom: 'Rolled omelet! I still love it', youngest: 'Stir-fried sausages 🌭' } },
+    { q: 'What song have you been playing most lately?', samples: { first: 'Upbeat songs on the way to work, always', dad: "Whatever's on the radio 🎵" } },
+    { q: 'Who in the family are you most thankful for this year? Tell us why!', samples: { youngest: 'Mom! For the snacks during exams', mom: 'Grandma, for making us kimchi 🥬' } },
+    { q: 'What was the best moment of all our family trips?', samples: { dad: 'Watching the sunrise together in Gangneung', first: 'Dad getting lost on Jeju lol' } },
+    { q: 'What is a small joy in your life these days?', samples: { grandma: 'Watering my plants in the morning', mom: 'A warm cup of tea after work ☕' } },
+    { q: 'What will our family look like in 10 years?', samples: { first: 'On the road together in a camper van', youngest: 'Me giving Mom and Dad pocket money 😎' } },
+    { q: "One secret you've never told the family!", samples: { youngest: 'Actually, I was the one who broke the flowerpot last year…', dad: 'My emergency cash is in the bottom drawer 🤫' } },
+    { q: 'What would you like to do with the family this weekend?', samples: { mom: 'A walk in the park together', youngest: 'A movie with fried chicken 🍗' } },
+    { q: 'What dish are you best at making?', samples: { dad: 'Ramyeon. Nobody gets the water right like me', grandma: 'Nobody beats my doenjang stew yet' } },
+    { q: 'What did you want to be when you were little?', samples: { mom: 'A teacher!', first: 'A soccer player ⚽' } },
+    { q: "If you could share just one worry, what's on your mind?", samples: { first: 'I really should start working out…', youngest: 'Vacation homework 😇' } },
+    { q: 'Which family photo is your favorite?', samples: { grandma: "The youngest's first birthday party", dad: "The eldest's graduation day" } },
+    { q: 'What is your favorite spot at home?', samples: { dad: 'The living room sofa. My seat on weekends', youngest: 'The sunny balcony ☀️' } },
+    { q: 'How would you describe yourself in one word?', samples: { mom: 'Vitamin 🍊', first: 'Easygoing' } },
+    { q: 'One thing you really want to tell the family', samples: { grandma: "Don't skip your meals", dad: 'Thank you for everything. I love you' } },
+    { q: 'What made you laugh the hardest recently?', samples: { youngest: 'Dad doing a cat impression lol', first: "Mom's selfie angles 🤣" } },
+    { q: 'Where would you love to go again?', samples: { mom: 'Gyeongju, where we went on our honeymoon', grandma: 'The hill behind my hometown' } },
+    { q: 'Who in the family would you like to be more like?', samples: { first: 'How hard Grandma works', youngest: "Mom's smile 😊" } },
+    { q: 'What do you really want to do before the year is over?', samples: { dad: 'Hang a framed family photo 🖼️', mom: 'Make kimchi together on kimjang day' } },
+    { q: 'What are you into these days?', samples: { first: 'Weekend hikes ⛰️', grandma: 'Video calls with the grandkids' } },
+    { q: 'What old story would you like to hear from Grandma or Grandpa?', samples: { youngest: 'What school was like for Grandma!', mom: 'When Grandma first moved to this neighborhood' } },
+    { q: 'If we made one family rule, what would it be?', samples: { dad: 'Sunday dinner together, always', first: 'Make up the same day after a fight 🤝' } },
+  ],
+
+  polls: [
+    { q: 'Summer family trip: where should we go?', options: ['Gangneung beach 🌊', 'Jeju Island 🍊', 'Camping ⛺', 'Rest at home 🛋️'] },
+    { q: "What's for dinner at the next get-together?", options: ['Galbi-jjim', 'Sashimi', 'Chinese takeout', 'Fried chicken'] },
+  ],
+
+  quiz: [
+    { q: "What color was Dad's first car?", options: ['White', 'Silver', 'Red', 'Blue'], comment: "A little red car! There's a photo of it in the gallery too 🚗" },
+    { q: "What is Grandma's favorite flower?", options: ['Rose', 'Chrysanthemum', 'Hydrangea', "Baby's breath"], comment: 'The yard is full of hydrangeas 💠' },
+    { q: 'Where did Mom and Dad first meet?', options: ['At work', 'On a blind date', 'In the college library', 'At a bus stop'], comment: 'They shared an umbrella on a rainy day ☔' },
+    { q: 'What was the weather like the day the youngest was born?', options: ['Sunny', 'Snowy', 'Rainy', 'Typhoon'], comment: 'It was the day of the first snow ❄️' },
+    { q: 'Where did our family go on our first trip?', options: ['Busan', 'Gyeongju', 'Sokcho', 'Jeonju'], comment: 'Remember the photo in front of Bulguksa Temple?' },
+  ],
+
+  tree: { name: 'Our family tree' },
+
+  samples: {
+    letters: [
+      { message: "You're all coming home this weekend, right?\nI'll make plenty of galbi-jjim. Don't be late 🍖" },
+      { message: 'I heard my youngest finished exams.\nGrandma sent you a little pocket money. Buy yourself something tasty.' },
+      { message: "Dad, thank you for driving me last time.\nNext time I'll drive 🚗" },
+      { message: "I fixed the boiler at Grandma's.\nNow we can all stay over nice and warm!" },
+      { message: "Mom, thank you for the snacks during exams 💛\nYou'll be the first to see my grades!" },
+      { message: "To our family in spring.\nBy the time this letter opens, I hope we're all out seeing the cherry blossoms together 🌸" },
+    ],
+    replies: [
+      { text: "Mom, you're the best 🥹 I'll come early!" },
+      {}, {},
+      { text: 'Love you, Grandma 💕' },
+    ],
+  },
+
+  museum: {
+    title: 'Our family photo gallery',
+    themes: [
+      {
+        title: 'Family trips', banner: 'Trips', subtitle: 'The days we set off together',
+        captions: ['First family trip, Gyeongju', 'First dip in the sea', 'Walnut cakes at a rest stop', 'In a Jeju tangerine orchard', 'Night at the campsite', 'Sledding hill', 'Train trip with Grandma', 'Where to next?'],
+      },
+      {
+        title: 'Holidays & birthdays', banner: 'Holidays', subtitle: 'Loud and lively when everyone is together',
+        captions: ['New Year bows on Seollal', 'Making songpyeon for Chuseok', "Grandma's 70th birthday party", "The youngest's first birthday", "Dad's birthday cake", 'Christmas tree', "Mom's surprise birthday party", 'Playing yut together'],
+      },
+      {
+        title: 'Growing up', banner: 'Growing up', subtitle: 'Look how big they got',
+        captions: ['First steps', 'Starting kindergarten', 'Learning to ride a bike', 'First sports day', 'Elementary school graduation', 'First day in a school uniform', 'College entrance exam done!', 'First day at work'],
+      },
+      {
+        title: 'Ordinary days', banner: 'Everyday', subtitle: 'Precious because they are ordinary',
+        captions: ['Sunday breakfast table', 'Nap in the living room', 'Walk around the neighborhood', 'Kimjang day', 'Hydrangeas in the yard', 'Chatting after dinner'],
+      },
+      {
+        title: 'Old photos', banner: 'Old photos', subtitle: 'Moments from the old albums',
+        captions: ["Grandma and Grandpa's wedding", "Mom and Dad's first date", 'In front of our first home', 'The day the eldest was born', 'Our old house', 'A faded family photo'],
       },
     ],
   },

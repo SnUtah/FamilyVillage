@@ -1,17 +1,18 @@
+import { L } from './i18n.js';
 import { now, toKST } from './common.js';
 
 /* =========================================================
-   🌿 계절: 봄·여름 숲(기본) · 🍂 가을 · ❄️ 겨울
-   - config.js의 season: 'green'(기본) · 'autumn' · 'winter' · 'auto'(날짜에 따라)
-   - 메뉴의 '계절 바꾸기'로 보는 사람이 직접 바꿀 수 있고, 그 휴대폰이 기억해요
-   - 주소 끝 #autumn · #winter · #green 으로 미리 보기
-   - 화면 색(css)은 body의 season-○○ 클래스로, 3D 마을은 'family:season' 이벤트로 바뀌어요
+   🌿 Seasons: spring–summer forest (default) · 🍂 autumn · ❄️ winter
+   - season in config.js: 'green' (default) · 'autumn' · 'winter' · 'auto' (by date)
+   - Visitors can change it themselves with the menu's season button, and that phone remembers it
+   - Preview with #autumn · #winter · #green at the end of the address
+   - Screen colors (css) change through the body class season-○○, the 3D village through the 'family:season' event
    ========================================================= */
 export const SEASONS = ['green', 'autumn', 'winter'];
 export const SEASON_INFO = {
-  green:  { label: '봄·여름', emoji: '🌿', theme: '#DDEFD0', toast: '🌿 싱그러운 봄·여름 숲이에요' },
-  autumn: { label: '가을', emoji: '🍂', theme: '#F3DEC0', toast: '🍂 단풍이 든 가을 마을이에요' },
-  winter: { label: '겨울', emoji: '❄️', theme: '#E4ECF4', toast: '❄️ 눈 내린 겨울 마을이에요' },
+  green:  { label: L('봄·여름', 'Spring\u2011summer'), emoji: '🌿', theme: '#DDEFD0', toast: L('🌿 싱그러운 봄·여름 숲이에요', '🌿 A fresh spring\u2011summer forest') },
+  autumn: { label: L('가을', 'Autumn'), emoji: '🍂', theme: '#F3DEC0', toast: L('🍂 단풍이 든 가을 마을이에요', '🍂 The village in autumn colors') },
+  winter: { label: L('겨울', 'Winter'), emoji: '❄️', theme: '#E4ECF4', toast: L('❄️ 눈 내린 겨울 마을이에요', '❄️ A snowy winter village') },
 };
 const KEY = 'family-season';
 const byMonth = () => { const m = toKST(now()).getMonth() + 1; return m >= 9 && m <= 11 ? 'autumn' : m === 12 || m <= 2 ? 'winter' : 'green'; };

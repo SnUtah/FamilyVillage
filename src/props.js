@@ -1,22 +1,28 @@
 import * as THREE from 'three';
+import { L, isKo } from './i18n.js';
 import { toon, mesh, textCanvas, canvasTex, labelSprite, rand, roundRect, clamp } from './util.js';
-const LABEL_FAR = 36;   // 이보다 먼 장소 이름표는 숨김
+const LABEL_FAR = 36;   // place name tags farther than this are hidden
 import { throwSprite, flowerMat, bushMat, mergeStatic } from './world.js';
 import { buildHouses, buildFamilyTree } from './houses.js';
 import { keyLabel } from './common.js';
-import { villageName, sinceDays, visitorsOn, upcoming, ddayText, questionOn, answersOn, memberColor } from './family.js';
+import { villageName, sinceDays, visitorsOn, upcoming, ddaySign, questionOn, answersOn, memberColor, postName } from './family.js';
 
 /* =========================================================
-   상호작용 오브젝트 & 건물
+   Interactive objects & buildings
    ========================================================= */
-/* 사진관 = 입구 오른쪽 바깥 (정면이 화면 쪽, 0.8배). 아래 외관 좌표는 원래 자리(가운데 20,-15.5) 기준 → 통째로 옮기고 줄임
-   광장 동쪽을 걸을 때 카메라와 나 사이에 끼지 않도록 바깥으로 */
+/* Gallery = outside, right of the entrance (front facing the screen, 0.8 scale). The exterior coordinates below are for its original spot (centre 20,-15.5) → moved and shrunk as a whole
+   Placed outside so it does not get between the camera and me when walking along the east side of the plaza */
 const MUSEUM_T = { s: 0.8, x: 24 - 0.8 * 20, z: 18 - 0.8 * -15.5 };
 const museumXZ = (x, z) => ({ x: MUSEUM_T.s * x + MUSEUM_T.x, z: MUSEUM_T.s * z + MUSEUM_T.z });
 export const MUSEUM_DOOR = { ...museumXZ(20, -8.4), r: 1.7 };
-export const BED = { x: 8.2, z: 25.5, r: 1.8 };   // 🌷 가족 정원 (우체통 옆)
+export const BED = { x: 8.2, z: 25.5, r: 1.8 };   // 🌷 family garden (next to the mailbox)
 const cutText = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
-/* 캔버스 글자를 maxW 폭에 맞춰 여러 줄로 (띄어쓰기 없는 긴 글은 글자 단위로) */
+/* English only: draw one line, shrinking the current font if it is wider than maxW (Korean keeps its size) */
+function fitFill(g, text, x, y, maxW) {
+  if (!isKo) { const w = g.measureText(text).width; if (w > maxW) g.font = g.font.replace(/(\d+(?:\.\d+)?)px/, (_, n) => `${Math.floor(n * maxW / w)}px`); }
+  g.fillText(text, x, y);
+}
+/* Wrap canvas text into lines that fit maxW (long text without spaces is split by character) */
 function wrapText(g, text, maxW) {
   const words = String(text).split(/(\s+)/), lines = [];
   let cur = '';
@@ -50,7 +56,7 @@ export function buildProps(scene) {
   }
   const facePlane = (canvas, w, h) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: canvasTex(canvas), transparent: true }));
 
-  /* ---------- 🏡 우리 가족 (이젤: 오늘 다녀간 가족이 적혀요) ---------- */
+  /* ---------- 🏡 Our family (easel: lists the family who visited today) ---------- */
   const boardC = document.createElement('canvas');
   boardC.width = 512; boardC.height = 680;
   let boardTex = null;
@@ -61,22 +67,22 @@ export function buildProps(scene) {
     g2.lineWidth = 10; g2.strokeStyle = '#B07A4F'; roundRect(g2, 5, 5, 502, 670, 20); g2.stroke();
     g2.textAlign = 'center'; g2.fillStyle = '#B5552B';
     g2.font = '64px serif'; g2.fillText('🏡', 256, 105);
-    g2.font = '56px "Jua"'; g2.fillText(villageName(), 256, 185);
+    g2.font = '56px "Jua"'; fitFill(g2, villageName(), 256, 185, 470);
     const days = sinceDays();
     g2.fillStyle = '#7C6A66'; g2.font = '28px "Gowun Dodum"';
-    if (days > 0) g2.fillText(`함께한 지 ${days.toLocaleString()}일째`, 256, 232);
-    g2.fillStyle = '#4A3B38'; g2.font = '700 32px "Gowun Dodum"'; g2.fillText('오늘 다녀간 가족', 256, 315);
+    if (days > 0) g2.fillText(L(`함께한 지 ${days.toLocaleString('ko-KR')}일째`, `Together for ${days.toLocaleString('en-US')} days`), 256, 232);
+    g2.fillStyle = '#4A3B38'; g2.font = '700 32px "Gowun Dodum"'; g2.fillText(L('오늘 다녀간 가족', 'Visited today'), 256, 315);
     const vs = visitorsOn();
     g2.font = '30px "Gowun Dodum"';
-    if (!vs.length) { g2.fillStyle = '#9A8C88'; g2.fillText('아직 아무도 안 왔어요', 256, 375); }
+    if (!vs.length) { g2.fillStyle = '#9A8C88'; g2.fillText(L('아직 아무도 안 왔어요', 'No one yet'), 256, 375); }
     vs.slice(0, 6).forEach((m, i) => {
       const col = i % 2, row = Math.floor(i / 2);
       g2.fillStyle = m.look.outfit; g2.beginPath(); g2.arc(col ? 300 : 70, 368 + row * 62, 12, 0, 7); g2.fill();
       g2.fillStyle = '#4A3B38'; g2.textAlign = 'left';
-      g2.fillText(cutText(m.nick || m.role || m.name, 6), col ? 322 : 92, 379 + row * 62);
+      g2.fillText(cutText(m.nick || m.role || m.name, L(6, 10)), col ? 322 : 92, 379 + row * 62);   // English names need a few more letters
       g2.textAlign = 'center';
     });
-    g2.fillStyle = '#B5552B'; g2.font = '26px "Gowun Dodum"'; g2.fillText('누르면 우리 가족 소개', 256, 640);
+    g2.fillStyle = '#B5552B'; g2.font = '26px "Gowun Dodum"'; g2.fillText(L('누르면 우리 가족 소개', 'Tap to meet our family'), 256, 640);
     if (boardTex) boardTex.needsUpdate = true;
   }
   {
@@ -98,10 +104,10 @@ export function buildProps(scene) {
     g.rotation.y = 0.35;
     group.add(g);
     colliders.push({ x: -4.8, z: 24, r: 1 });
-    addInteract('family', '우리 가족', '🏡', '가족 소개 보기', -4.8, 24, 3, 3.8);
+    addInteract('family', L('우리 가족', 'Our family'), '🏡', L('가족 소개 보기', 'Meet the family'), -4.8, 24, 3, 3.8);
   }
 
-  /* ---------- 💬 오늘의 질문 (광장 게시판) ---------- */
+  /* ---------- 💬 Question of the day (plaza notice board) ---------- */
   const qC = document.createElement('canvas');
   qC.width = 512; qC.height = 400;
   let qTex = null;
@@ -112,13 +118,24 @@ export function buildProps(scene) {
     g2.save(); g2.translate(256, 205); g2.rotate(-0.02);
     g2.fillStyle = '#FFFDF6'; g2.shadowColor = 'rgba(0,0,0,.25)'; g2.shadowBlur = 12; g2.fillRect(-215, -170, 430, 340); g2.shadowColor = 'transparent';
     g2.fillStyle = '#E4605A'; g2.beginPath(); g2.arc(0, -160, 13, 0, 7); g2.fill();
-    g2.textAlign = 'center'; g2.fillStyle = '#B5552B'; g2.font = '36px "Jua"'; g2.fillText('💬 오늘의 질문', 0, -108);
+    g2.textAlign = 'center'; g2.fillStyle = '#B5552B'; g2.font = '36px "Jua"'; fitFill(g2, L('💬 오늘의 질문', '💬 Question of the day'), 0, -108, 400);
     const q = questionOn();
     g2.fillStyle = '#4A3528'; g2.font = '36px "Jua"';
-    wrapText(g2, q ? q.q : '질문을 준비 중이에요', 380).slice(0, 3).forEach((ln, i) => g2.fillText(ln, 0, -40 + i * 48));
+    const qText = q ? q.q : L('질문을 준비 중이에요', 'The question is on its way');
+    let qLines = wrapText(g2, qText, 380);
+    if (!isKo && qLines.length > 3) {   // English only: a longer question gets a smaller font, then the last line is cut with …
+      g2.font = '32px "Jua"';
+      qLines = wrapText(g2, qText, 380);
+      if (qLines.length > 3) {
+        let last = qLines[2];
+        while (last.length > 1 && g2.measureText(last + '…').width > 380) last = last.slice(0, -1);
+        qLines[2] = last.trimEnd() + '…';
+      }
+    }
+    qLines.slice(0, 3).forEach((ln, i) => g2.fillText(ln, 0, -40 + i * 48));
     const n = q ? answersOn(q.day).length : 0;
     g2.fillStyle = '#7C6A66'; g2.font = '26px "Gowun Dodum"';
-    g2.fillText(n ? `${n}명이 답했어요 · 눌러서 답하기` : '첫 번째로 답해 보세요!', 0, 140);
+    fitFill(g2, n ? L(`${n}명이 답했어요 · 눌러서 답하기`, `${n} answered · Tap to answer`) : L('첫 번째로 답해 보세요!', 'Be the first to answer'), 0, 140, 400);
     g2.restore();
     if (qTex) qTex.needsUpdate = true;
   }
@@ -139,10 +156,10 @@ export function buildProps(scene) {
     g.rotation.y = -0.55;
     group.add(g);
     colliders.push({ x: 4.4, z: -1.8, r: 0.9 });
-    addInteract('question', '오늘의 질문', '💬', '질문에 답하기', 4.4, -1.8, 3, 3.75);
+    addInteract('question', L('오늘의 질문', 'Question of the day'), '💬', L('질문에 답하기', 'Answer the question'), 4.4, -1.8, 3, 3.75);
   }
 
-  /* ---------- ✉️ 안부 우체통 (빨간 우체통) ---------- */
+  /* ---------- ✉️ Mailbox (red postbox) ---------- */
   {
     const g = new THREE.Group();
     const red = '#E4605A';
@@ -151,13 +168,13 @@ export function buildProps(scene) {
     const dome = mesh(new THREE.CylinderGeometry(0.4, 0.4, 1, 20, 1, false, 0, Math.PI), red, 0, 1.8, 0);
     dome.rotation.z = Math.PI / 2;
     const slot = mesh(new THREE.BoxGeometry(0.6, 0.06, 0.05), '#4A2B28', 0, 1.55, 0.41);
-    const sign = facePlane(textCanvas('우체통', { w: 256, h: 128, size: 58, bg: '#FFF6E6', radius: 24, color: '#B5452F' }), 0.7, 0.35);
+    const sign = facePlane(textCanvas(L('우체통', 'Mailbox'), { w: 256, h: 128, size: 58, bg: '#FFF6E6', radius: 24, color: '#B5452F', fit: 224 }), 0.7, 0.35);
     sign.position.set(0, 1.1, 0.41);
-    // 튀어나온 편지들
+    // letters popping out
     const letters = [];
     for (let i = 0; i < 3; i++) {
       const l = mesh(new THREE.BoxGeometry(0.4, 0.28, 0.02), i === 1 ? '#FFF3EA' : '#FFFFFF', 0, 2.4, 0);
-      l.userData.dynamic = true;   // 우체통 위로 날아오르는 편지
+      l.userData.dynamic = true;   // letters flying up above the mailbox
       g.add(l);
       letters.push({ l, off: i * 2.1 });
     }
@@ -172,19 +189,19 @@ export function buildProps(scene) {
       l.visible = k < 0.95;
     }));
     colliders.push({ x: 4.8, z: 23, r: 0.8 });
-    addInteract('mailbox', '안부 우체통', '✉️', '편지 쓰기', 4.8, 23, 2.8, 4.1);
+    addInteract('mailbox', L('안부 우체통', 'Mailbox'), '✉️', L('편지 쓰기', 'Write a letter'), 4.8, 23, 2.8, 4.1);
   }
 
-  /* ---------- 🌷 가족 정원: 편지 한 통 = 꽃 한 송이 (보낸 사람 색) ---------- */
+  /* ---------- 🌷 Family garden: one letter = one flower (in the sender's color) ---------- */
   const bed = new THREE.Group();
-  bed.userData.dynamic = true;   // 편지가 오면 꽃이 더 심어짐
+  bed.userData.dynamic = true;   // more flowers are planted when letters arrive
   group.add(bed);
   const flowers = [];
   {
     bed.add(mesh(new THREE.CylinderGeometry(BED.r + 0.3, BED.r + 0.4, 0.18, 28), '#B98A66', BED.x, 0.09, BED.z));
     bed.add(mesh(new THREE.CylinderGeometry(BED.r + 0.05, BED.r + 0.05, 0.22, 28), '#7A5A44', BED.x, 0.1, BED.z));
     const post = mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.1, 6), '#A47A5C', BED.x, 0.55, BED.z + BED.r + 0.5);
-    const sign = facePlane(textCanvas('가족 정원', { w: 360, h: 110, size: 50, bg: '#FFF6E6', radius: 26, color: '#B5552B' }), 1.3, 0.4);
+    const sign = facePlane(textCanvas(L('가족 정원', 'Family garden'), { w: 360, h: 110, size: 50, bg: '#FFF6E6', radius: 26, color: '#B5552B', fit: 320 }), 1.3, 0.4);
     sign.position.set(BED.x, 1.15, BED.z + BED.r + 0.55);
     const back = sign.clone(); back.rotation.y = Math.PI; back.position.z -= 0.02;
     bed.add(post, sign, back);
@@ -202,7 +219,7 @@ export function buildProps(scene) {
     g.add(mesh(petalGeo, letter.color || memberColor(letter.who), 0, 0.75, 0));
     g.add(mesh(coreGeo, '#F7D58B', 0, 0.75, 0.13));
     if (flowers.length < 24) {
-      const name = String(letter.name || '').slice(0, 8);
+      const name = String(postName(letter.who, letter.name) || '').slice(0, L(8, 12));   // English names need a few more letters
       const l = labelSprite(name, { scale: 1.5, bg: 'rgba(255,253,248,.85)' });
       l.position.y = 1.12;
       g.add(l);
@@ -219,17 +236,17 @@ export function buildProps(scene) {
     return new THREE.Vector3(x, 0, z);
   }
 
-  /* ---------- 🗺️ 모이는 곳 (이정표) ---------- */
+  /* ---------- 🗺️ Meeting place (signpost) ---------- */
   {
     const g = new THREE.Group();
     g.add(mesh(new THREE.CylinderGeometry(0.1, 0.12, 3.2, 8), '#A47A5C', 0, 1.6, 0));
-    const signs = [['모이는 곳', '#FFF6E6', 0.4], ['본가 →', '#F2B27A', -0.5], ['주차 안내', '#F2C14E', 0.9]];
+    const signs = [[L('모이는 곳', 'Meeting place'), '#FFF6E6', 0.4], [L('본가 →', 'Family home →'), '#F2B27A', -0.5], [L('주차 안내', 'Parking'), '#F2C14E', 0.9]];
     signs.forEach(([t, bg, rot], i) => {
       const s = new THREE.Group();
       const board = mesh(new THREE.BoxGeometry(1.5, 0.42, 0.08), bg, 0.55, 0, 0);
       const tip = mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 3), bg, 1.35, 0, 0);
       tip.rotation.x = Math.PI / 2; tip.rotation.y = Math.PI / 2;
-      const txt = facePlane(textCanvas(t, { w: 384, h: 110, size: 56, bg: null }), 1.4, 0.4);
+      const txt = facePlane(textCanvas(t, { w: 384, h: 110, size: 56, bg: null, fit: 360 }), 1.4, 0.4);
       txt.position.set(0.55, 0, 0.05);
       const back = txt.clone(); back.rotation.y = Math.PI; back.position.z = -0.05;
       s.add(board, tip, txt, back);
@@ -240,10 +257,10 @@ export function buildProps(scene) {
     g.position.set(-3.6, 0, 13.5);
     group.add(g);
     colliders.push({ x: -3.6, z: 13.5, r: 0.4 });
-    addInteract('directions', '모이는 곳', '🗺️', '길 안내 보기', -3.6, 13.5, 2.6, 3.9);
+    addInteract('directions', L('모이는 곳', 'Meeting place'), '🗺️', L('길 안내 보기', 'See directions'), -3.6, 13.5, 2.6, 3.9);
   }
 
-  /* ---------- 🗳️ 가족 투표함 ---------- */
+  /* ---------- 🗳️ Family polls ---------- */
   {
     const g = new THREE.Group();
     g.add(mesh(new THREE.BoxGeometry(1.0, 0.75, 1.0), '#B98A66', 0, 0.38, 0));
@@ -253,7 +270,7 @@ export function buildProps(scene) {
     const paper = mesh(new THREE.BoxGeometry(0.42, 0.3, 0.02), '#F7D58B', 0, 2.0, 0);
     paper.userData.dynamic = true;
     g.add(paper);
-    const sign = facePlane(textCanvas('투표함', { w: 256, h: 110, size: 54, bg: '#E07B39', radius: 20, color: '#FFFFFF' }), 0.8, 0.34);
+    const sign = facePlane(textCanvas(L('투표함', 'Polls'), { w: 256, h: 110, size: 54, bg: '#E07B39', radius: 20, color: '#FFFFFF', fit: 224 }), 0.8, 0.34);
     sign.position.set(0, 1.3, 0.51);
     g.add(sign);
     g.position.set(-13.5, 0, 2);
@@ -261,10 +278,10 @@ export function buildProps(scene) {
     group.add(g);
     updaters.push(t => { paper.position.y = 2.0 + Math.sin(t * 2.2) * 0.08; paper.rotation.y = Math.sin(t) * 0.4; });
     colliders.push({ x: -13.5, z: 2, r: 0.9 });
-    addInteract('poll', '가족 투표함', '🗳️', '투표하기', -13.5, 2, 3, 3.2);
+    addInteract('poll', L('가족 투표함', 'Family polls'), '🗳️', L('투표하기', 'Vote'), -13.5, 2, 3, 3.2);
   }
 
-  /* ---------- 📅 가족 달력 (칠판: 다가오는 날 다섯 개) ---------- */
+  /* ---------- 📅 Family calendar (chalkboard: the next five days) ---------- */
   {
     const g = new THREE.Group();
     const wood = '#B98A66';
@@ -275,17 +292,18 @@ export function buildProps(scene) {
     const x = c.getContext('2d');
     x.fillStyle = '#4E5F46'; x.fillRect(0, 0, 480, 560);
     x.fillStyle = '#FFF8E7'; x.textAlign = 'center';
-    x.font = '52px "Jua"'; x.fillText('가족 달력', 240, 70);
+    x.font = '52px "Jua"'; fitFill(x, L('가족 달력', 'Family calendar'), 240, 70, 440);
     const ups = upcoming(5);
     x.font = '28px "Gowun Dodum"';
-    if (!ups.length) x.fillText('다가오는 날이 없어요', 240, 260);
+    if (!ups.length) x.fillText(L('다가오는 날이 없어요', 'Nothing coming up'), 240, 260);
     ups.forEach((e, i) => {
       const y = 150 + i * 80;
       x.font = '28px "Gowun Dodum"';
       x.textAlign = 'left'; x.fillStyle = '#FFF8E7';
-      x.fillText(`${e.emoji || '📌'} ${cutText(e.title, 9)}`, 28, y);
+      fitFill(x, `${e.emoji || '📌'} ${cutText(e.title, L(9, 40))}`, 28, y, 300);
       x.textAlign = 'right'; x.fillStyle = e.dday === 0 ? '#F4B8C0' : '#F7D58B';
-      x.fillText(ddayText(e.dday), 454, y);
+      x.font = '28px "Gowun Dodum"';   // (a long English title may have shrunk the font above)
+      x.fillText(ddaySign(e.dday), 454, y);
       x.textAlign = 'left'; x.fillStyle = 'rgba(255,248,231,.6)'; x.font = '22px "Gowun Dodum"';
       x.fillText(keyLabel(e.key), 70, y + 30);
     });
@@ -296,10 +314,10 @@ export function buildProps(scene) {
     g.rotation.y = -0.5;
     group.add(g);
     colliders.push({ x: 11, z: 9.8, r: 1 });
-    addInteract('calendar', '가족 달력', '📅', '달력 보기', 11, 9.8, 2.8, 3.6);
+    addInteract('calendar', L('가족 달력', 'Family calendar'), '📅', L('달력 보기', 'Open the calendar'), 11, 9.8, 2.8, 3.6);
   }
 
-  /* ---------- ❓ 퀴즈 부스 ---------- */
+  /* ---------- ❓ Quiz booth ---------- */
   {
     const g = new THREE.Group();
     g.add(mesh(new THREE.BoxGeometry(2.4, 1.1, 1), '#F6E7CC', 0, 0.55, 0));
@@ -315,13 +333,13 @@ export function buildProps(scene) {
     q.position.set(0, 0.6, 0.51);
     g.add(q);
     g.position.set(-20, 0, -1.5);
-    g.rotation.y = 1.25;   // 광장 쪽을 봄
+    g.rotation.y = 1.25;   // faces the plaza
     group.add(g);
     colliders.push({ x: -20, z: -1.5, r: 1.5 });
-    addInteract('quiz', '가족 퀴즈', '❓', '퀴즈 풀기', -20, -1.5, 3.2, 4.4);
+    addInteract('quiz', L('가족 퀴즈', 'Family quiz'), '❓', L('퀴즈 풀기', 'Take the quiz'), -20, -1.5, 3.2, 4.4);
   }
 
-  /* ---------- 🔥 광장 모닥불 (고구마를 던져 넣으면 노릇노릇) ---------- */
+  /* ---------- 🔥 Plaza campfire (toss in a sweet potato and it roasts golden) ---------- */
   let campfire;
   {
     const g = new THREE.Group();
@@ -339,7 +357,7 @@ export function buildProps(scene) {
       l.rotation.set(0, (i * Math.PI) / 4 + 0.3, Math.PI / 2);
       g.add(l);
     }
-    // 불꽃 (빛 계산 없이 색만 밝게) + 은은한 빛무리
+    // flames (bright colors, no light calculation) + a soft glow
     const flames = [['#FF7A1A', 0.42, 1.05], ['#FFB23A', 0.3, 0.85], ['#FFE58A', 0.17, 0.6]].map(([col, r, h], k) => {
       const f = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.92 }));
       f.position.y = 0.4 + h / 2; f.userData = { h, k, dynamic: true };
@@ -353,14 +371,14 @@ export function buildProps(scene) {
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(gc), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.7 }));
     glow.position.y = 0.9; glow.scale.set(4.2, 4.2, 1);
     g.add(glow);
-    // 튀는 불티
+    // flying sparks
     const n = 28, pos = new Float32Array(n * 3), seeds = [];
     for (let i = 0; i < n; i++) seeds.push([Math.random() * Math.PI * 2, Math.random(), Math.random() * 0.35]);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const sparks = new THREE.Points(geo, new THREE.PointsMaterial({ color: '#FFC46B', size: 0.09, transparent: true, opacity: 0.9, depthWrite: false }));
     g.add(sparks);
-    // 둘러앉는 통나무 의자
+    // log seats around the fire
     const seatGeo = new THREE.CylinderGeometry(0.32, 0.32, 1.7, 10);
     for (let k = 0; k < 4; k++) {
       const a = (k * Math.PI) / 2 + Math.PI / 4;
@@ -369,7 +387,7 @@ export function buildProps(scene) {
       g.add(seat);
       colliders.push({ x: Math.cos(a) * 2.9, z: 4 + Math.sin(a) * 2.9, r: 0.5 });
     }
-    // 구운 고구마 (넣은 만큼 돌판 위에)
+    // roasted sweet potatoes (as many as were tossed in, on the stone plate)
     const plate = mesh(new THREE.CylinderGeometry(0.45, 0.5, 0.12, 12), '#A39A8F', 1.75, 0.06, 0.25);
     g.add(plate);
     const potatoes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.11, 8, 6), toon('#8A4B3A'), 6);
@@ -391,9 +409,9 @@ export function buildProps(scene) {
       if (flare > 0) flare = Math.max(0, flare - dt * 1.5);
     });
     colliders.push({ x: 0, z: 4, r: 1.6 });
-    addInteract('campfire', '모닥불', '🔥', '고구마 굽기', 0, 4, 3.4, 3.4);
+    addInteract('campfire', L('모닥불', 'Campfire'), '🔥', L('고구마 굽기', 'Roast a sweet potato'), 0, 4, 3.4, 3.4);
     campfire = {
-      /* 손에서 모닥불로 고구마가 날아가요 */
+      /* a sweet potato flies from your hand into the campfire */
       toss(scene, from, onLand) {
         throwSprite(scene, from, new THREE.Vector3(0, 0.8, 4), '🍠', 0.75, () => { flare = 1; onLand?.(); });
       },
@@ -412,10 +430,10 @@ export function buildProps(scene) {
     };
   }
 
-  /* ---------- 🏘️ 가족 집 길 (가로 한 줄) + 🌱 가운데 함께 키우는 나무 + 뒤로 꽃 울타리 ---------- */
+  /* ---------- 🏘️ Family house lane (one row across) + 🌱 the tree we grow together in the middle + a flower hedge behind ---------- */
   {
     const g = new THREE.Group();
-    // 집 줄 뒤쪽 덤불 울타리 (계절 따라 초록 → 단풍 → 눈)
+    // hedge behind the row of houses (green → autumn colors → snow, with the season)
     const hedgeGeo = new THREE.IcosahedronGeometry(0.9, 1), budGeo = new THREE.IcosahedronGeometry(0.18, 0);
     for (let i = 0; i < 47; i++) {
       const hx = -34.5 + i * 1.5;
@@ -430,7 +448,7 @@ export function buildProps(scene) {
   const houses = buildHouses({ group, colliders, boxes, addInteract, updaters });
   const familyTree = buildFamilyTree({ group, colliders, addInteract, updaters });
 
-  /* ---------- 📸 포토존 ---------- */
+  /* ---------- 📸 Photo zone ---------- */
   {
     const g = new THREE.Group();
     const gold = '#9C6B44';
@@ -453,17 +471,17 @@ export function buildProps(scene) {
     group.add(g);
     const ang = 0.5;
     for (const s of [-1, 1]) colliders.push({ x: -11 + Math.cos(ang) * s * fw / 2, z: 19 - Math.sin(ang) * s * fw / 2, r: 0.3 });
-    addInteract('photozone', '가족 포토존', '📸', '가족사진 찍기', -11, 19, 3, 4.6);
+    addInteract('photozone', L('가족 포토존', 'Family photo zone'), '📸', L('가족사진 찍기', 'Take a family photo'), -11, 19, 3, 4.6);
   }
 
-  /* ---------- 마을 입구 아치 ---------- */
+  /* ---------- Village entrance arch ---------- */
   {
     const g = new THREE.Group();
     for (const s of [-1, 1]) {
       g.add(mesh(new THREE.CylinderGeometry(0.16, 0.2, 3.6, 10), '#8F6243', s * 2.7, 1.8, 0));
       for (let i = 0; i < 7; i++) g.add(mesh(new THREE.IcosahedronGeometry(0.17, 1), flowerMat(i + (s > 0 ? 1 : 0)), s * 2.7 + rand(-0.2, 0.2), 0.4 + i * 0.45, rand(-0.2, 0.2)));
     }
-    const sign = facePlane(textCanvas(villageName(), { w: 768, h: 150, size: 74, bg: '#FFF6E6', border: '#B07A4F', radius: 60, color: '#B5452F' }), 5.2, 1.0);
+    const sign = facePlane(textCanvas(villageName(), { w: 768, h: 150, size: 74, bg: '#FFF6E6', border: '#B07A4F', radius: 60, color: '#B5452F', fit: 690 }), 5.2, 1.0);
     sign.position.set(0, 3.7, 0.13);
     const back = sign.clone(); back.rotation.y = Math.PI; back.position.z = -0.13;
     g.add(mesh(new THREE.BoxGeometry(5.8, 1.15, 0.2), '#8F6243', 0, 3.7, 0), sign, back);
@@ -472,26 +490,26 @@ export function buildProps(scene) {
     colliders.push({ x: -2.7, z: 34.5, r: 0.3 }, { x: 2.7, z: 34.5, r: 0.3 });
   }
 
-  /* ---------- 🏛️ 사진관 ---------- */
+  /* ---------- 🏛️ Gallery ---------- */
   buildMuseumExterior(group, colliders, boxes, updaters);
-  addInteract('museum', W.museum?.title || '가족 사진관', '🖼️', '사진관 입장', MUSEUM_DOOR.x, MUSEUM_DOOR.z, 2.6, 6.9);
+  addInteract('museum', W.museum?.title || L('가족 사진관', 'Family photo gallery'), '🖼️', L('사진관 입장', 'Enter the gallery'), MUSEUM_DOOR.x, MUSEUM_DOOR.z, 2.6, 6.9);
 
-  /* 가족이 글을 남기면 게시판·집·나무를 다시 그림 */
+  /* When the family posts something, redraw the board, houses and tree */
   function refresh() { drawBoard(); drawQuestion(); houses.refresh(); familyTree.refresh(); }
 
   function update(dt, t, playerPos, posing = false) {
     updaters.forEach(u => u(t, dt));
-    // 사진 찍는 동안엔 이름표를 숨겨서 사진이 깔끔하게 · 먼 이름표는 흐려지다 사라짐 (멀리서 봐도 화면이 덜 복잡하게)
+    // hide name tags while taking a photo so it looks clean · far name tags fade out (so the screen is less busy from a distance)
     interactables.forEach(it => {
       const d = playerPos ? Math.hypot(playerPos.x - it.pos.x, playerPos.z - it.pos.z) : 0;
-      const behind = playerPos && it.pos.z > playerPos.z + 7;   // 카메라와 나 사이(화면 아래쪽)는 크게 가려서 숨김
+      const behind = playerPos && it.pos.z > playerPos.z + 7;   // tags between the camera and me (bottom of the screen) would cover a lot, so hide them
       it.label.visible = !posing && d < LABEL_FAR && !behind && !it.muted;
       it.label.material.opacity = clamp((LABEL_FAR - d) / 9, 0, 1);
       it.label.position.y = it.baseY + Math.sin(t * 2 + it.off) * 0.12;
     });
     if (playerPos) houses.update(dt, t, playerPos, posing);
   }
-  mergeStatic(group);   // 움직이지 않는 소품을 재질별로 합쳐 그리기 명령을 줄임
+  mergeStatic(group);   // merge still props per material to cut draw calls
   return { group, colliders, boxes, interactables, update, refresh, plantFlower, flowerCount: () => flowers.length, campfire, bed: BED, houses, familyTree };
 }
 
@@ -499,14 +517,14 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
   const W = window.FAMILY;
   const g = new THREE.Group();
   const c0 = colliders.length;
-  const cx = 20, front = -10.2; // 정면 벽 z
+  const cx = 20, front = -10.2; // z of the front wall
   const cream = '#F1E0C2', white = '#FFF8EC', rose = '#B5452F';
-  // 기단
+  // base
   g.add(mesh(new THREE.BoxGeometry(15, 0.4, 13), '#D8C3A0', cx, 0.2, -15.5));
   for (let i = 0; i < 3; i++) g.add(mesh(new THREE.BoxGeometry(6 - i * 0.6, 0.13, 0.45), '#D8C3A0', cx, 0.065 + i * 0.13, -8.3 - i * 0.45));
-  // 본관
+  // main building
   g.add(mesh(new THREE.BoxGeometry(13, 5.8, 10), cream, cx, 3.3, -15.3));
-  // 기둥
+  // columns
   const colGeo = new THREE.CylinderGeometry(0.34, 0.38, 5.4, 16);
   const capGeo = new THREE.BoxGeometry(0.9, 0.25, 0.9);
   [14, 16.2, 18.3, 21.7, 23.8, 26].forEach(x => {
@@ -514,7 +532,7 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
     g.add(mesh(capGeo, white, x, 5.9, -9.4));
     g.add(mesh(capGeo, white, x, 0.52, -9.4));
   });
-  // 지붕
+  // roof
   g.add(mesh(new THREE.BoxGeometry(14.2, 0.6, 11.8), white, cx, 6.3, -14.9));
   const tri = new THREE.Shape();
   tri.moveTo(-7.4, 0); tri.lineTo(7.4, 0); tri.lineTo(0, 2.4); tri.closePath();
@@ -524,20 +542,20 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
     const s = new THREE.Shape(); s.moveTo(-6.6, 0.25); s.lineTo(6.6, 0.25); s.lineTo(0, 2.05); s.closePath(); return s;
   })(), { depth: 0.05, bevelEnabled: false }), white, cx, 6.6, -8.98);
   g.add(pedFront);
-  // 하트 장식
+  // heart ornament
   const hs = new THREE.Shape();
   hs.moveTo(0, -0.35); hs.bezierCurveTo(-0.6, 0.05, -0.35, 0.5, 0, 0.25); hs.bezierCurveTo(0.35, 0.5, 0.6, 0.05, 0, -0.35);
   const heart = mesh(new THREE.ExtrudeGeometry(hs, { depth: 0.1, bevelEnabled: false }), '#F2C14E', cx, 7.5, -8.9);
   heart.scale.setScalar(0.9);
   g.add(heart);
-  // 간판
+  // sign
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.9), new THREE.MeshBasicMaterial({
-    map: canvasTex(textCanvas(W.museum?.title || '가족 사진관', { w: 1024, h: 150, size: 84, bg: '#FFF6E6', border: '#B07A4F', radius: 75, color: '#B5452F' })),
+    map: canvasTex(textCanvas(W.museum?.title || L('가족 사진관', 'Family photo gallery'), { w: 1024, h: 150, size: 84, bg: '#FFF6E6', border: '#B07A4F', radius: 75, color: '#B5452F', fit: 930 })),
     transparent: true,
   }));
   sign.position.set(cx, 5.3, front + 0.02);
   g.add(sign);
-  // 문
+  // door
   g.add(mesh(new THREE.BoxGeometry(2.9, 3.7, 0.2), '#8F6243', cx, 2.25, front));
   const door = mesh(new THREE.BoxGeometry(2.5, 3.4, 0.22), '#9C6B4E', cx, 2.1, front + 0.02);
   g.add(door);
@@ -546,16 +564,19 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
   g.add(glow);
   const knob = mesh(new THREE.SphereGeometry(0.08, 8, 6), '#E2B865', cx + 0.9, 1.9, front + 0.15);
   g.add(knob);
-  // 창문 & 테마 배너
+  // windows & theme banners
   const themes = W.museum?.themes || [];
   [15.2, 17.2, 22.8, 24.8].forEach((x, i) => {
     const th = themes[i % Math.max(1, themes.length)];
-    const c = textCanvas(th ? [th.emoji] : ['♥'], { w: 128, h: 320, size: 70, bg: th?.color || '#F4B8C0', radius: 16, color: '#fff', sub: th?.title?.slice(0, 4), subSize: 22 });
+    // banner caption: first 4 characters (Korean) / longest word (English)
+    // (English: the short banner name from FAMILY_EN.museum.themes when there is one)
+    const sub = isKo ? th?.title?.slice(0, 4) : th?.banner || th?.title?.split(' ').reduce((a, w) => (w.length > a.length ? w : a), '');
+    const c = textCanvas(th ? [th.emoji] : ['♥'], { w: 128, h: 320, size: 70, bg: th?.color || '#F4B8C0', radius: 16, color: '#fff', sub, subSize: 22 });
     const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 2), new THREE.MeshBasicMaterial({ map: canvasTex(c), transparent: true }));
     banner.position.set(x, 3.2, front + 0.03);
     g.add(banner);
   });
-  // 화분
+  // flower pots
   const pot = (x, z) => {
     g.add(mesh(new THREE.CylinderGeometry(0.35, 0.28, 0.6, 12), '#B9773E', x, 0.3, z));
     const b = mesh(new THREE.IcosahedronGeometry(0.5, 1), '#93A35A', x, 0.95, z);
@@ -564,7 +585,7 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
     colliders.push({ x, z, r: 0.5 });
   };
   pot(16.5, -7.8); pot(23.5, -7.8);
-  // 다른 면 창문
+  // windows on the other sides
   for (const sx of [13.45, 26.55]) {
     for (const z of [-12.5, -15.5, -18.5]) {
       const w = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.2), new THREE.MeshBasicMaterial({ color: '#CDE9F5' }));
@@ -573,7 +594,7 @@ function buildMuseumExterior(group, colliders, boxes, updaters) {
       g.add(w);
     }
   }
-  // 아래 좌표는 원래 자리 기준 → 통째로 옮김 (부딪힘 자리도 같이)
+  // the coordinates above are for the original spot → move it all (the collision spots too)
   g.position.set(MUSEUM_T.x, 0, MUSEUM_T.z);
   g.scale.setScalar(MUSEUM_T.s);
   group.add(g);

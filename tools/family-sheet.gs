@@ -1,21 +1,22 @@
 /* =========================================================
-   🍂 가족 마을 — 가족 소식 모으기 (Google Apps Script)
+   🍂 Family village — collecting family news (Google Apps Script)
 
-   구글 시트에 붙여서 '웹 앱'으로 배포하면, 마을에서 남긴 편지·질문 답·하트·물 주기·투표가
-   이 시트에 모이고 가족 모두가 같은 소식을 봅니다. 설치 순서는 tools/가족_시트_연결.md (10분, 무료)
+   Attach it to a Google Sheet and deploy it as a 'web app': the letters, answers, hearts, waterings and votes
+   left in the village are collected in this sheet and the whole family sees the same news. Setup: tools/가족_시트_연결.md (10 minutes, free)
 
-   - 🔒 가족 암호는 선택이에요. 처음엔 암호 없이 누구나 들어오고, 마을의 ⚙️(가족 암호)에서 걸면
-     이 스크립트의 '스크립트 속성'에 저장돼 가족 모두에게 적용돼요. 걸린 뒤엔 맞는 암호만 읽고 쓸 수 있어요
-   - GET  ?action=status&site=…         → 암호가 걸려 있는지 + 힌트 (암호 없이도 알려줌)
-   - GET  ?action=check&code=…&site=…   → 암호 확인
-   - GET  ?action=all&code=…&site=…     → 모든 소식 (종류별 최근 것)
-   - POST {kind, code, id, …}            → 한 줄 추가 (같은 id는 한 번만, 투표·모습·답은 고쳐 쓰기)
-   - POST {kind:'setcode', code, newCode, hint} → 암호 걸기·바꾸기·없애기 (걸려 있으면 지금 암호가 맞아야 함)
-   - 탭 이름 = '사이트·종류' (예: kimfamily·편지). 없으면 자동으로 만들어요
-   - 시트에서 행을 지우면 마을에서도 사라져요 (부적절한 글 지우기)
-   - 타임캡슐 편지는 열리는 날 전까지 내용이 내려가지 않아요
+   - 🔒 The family password is optional. At first anyone can come in; once set with ⚙️ (family password) in the village,
+     it is saved in this script's 'Script Properties' and applies to the whole family. After that only the right password can read and write
+   - GET  ?action=status&site=…         → whether a password is set + the hint (answered even without the password)
+   - GET  ?action=check&code=…&site=…   → check a password
+   - GET  ?action=all&code=…&site=…     → all news (the latest of each kind)
+   - POST {kind, code, id, …}            → add one row (the same id only once; votes, looks and answers are overwritten)
+   - POST {kind:'setcode', code, newCode, hint} → set · change · remove the password (if one is set, the current one must match)
+   - Tab name = 'site·kind' (e.g. kimfamily·편지). Missing tabs are created automatically
+     (the tab names and header rows below stay in Korean: existing sheets are found by these names)
+   - Deleting a row in the sheet removes it from the village too (for removing inappropriate posts)
+   - A time capsule letter's text is not sent out before its opening day
    ========================================================= */
-var START_CODE = '';   // (선택) 처음부터 걸어 둘 암호. 비워 두고 마을의 ⚙️에서 정하는 걸 추천해요
+var START_CODE = '';   // (optional) a password set from the start. Better: leave it empty and set it with ⚙️ in the village
 
 var KINDS = {
   letters: { tab: '편지', cols: ['time', 'id', 'who', 'name', 'to', 'message', 'openAt'], head: ['시간', 'id', '보낸 사람', '이름', '받는 사람', '편지', '열리는 날'], max: 400 },
@@ -37,7 +38,7 @@ function today_() { return Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-
 var PROPS = PropertiesService.getScriptProperties();
 function code_() { var c = PROPS.getProperty('FAMILY_CODE'); return c === null ? String(START_CODE || '') : c; }
 function hint_() { return PROPS.getProperty('FAMILY_HINT') || ''; }
-function okCode_(code) { var cur = code_(); return !cur || String(code || '') === cur; }   // 암호를 안 걸었으면 누구나
+function okCode_(code) { var cur = code_(); return !cur || String(code || '') === cur; }   // no password set → anyone
 function tabName_(site, kind) {
   var s = String(site || 'main').replace(/[^\w가-힣-]/g, '').slice(0, 40) || 'main';
   return s + '·' + KINDS[kind].tab;
@@ -56,14 +57,14 @@ function sheetFor_(site, kind, create) {
   }
   return sh;
 }
-/* 시트 칸 → 글자 (날짜 칸은 'YYYY-MM-DD', 시간은 ISO) */
+/* Sheet cell → text (date cells as 'YYYY-MM-DD', times as ISO) */
 function cell_(col, v) {
   if (v instanceof Date) return col === 'time' ? v.toISOString() : Utilities.formatDate(v, 'Asia/Seoul', 'yyyy-MM-dd');
   if (NUM[col]) return v === '' ? '' : Number(v);
   return String(v == null ? '' : v);
 }
 
-/* 읽기 */
+/* Reading */
 function doGet(e) {
   var p = (e && e.parameter) || {};
   if (p.action === 'status') return json_({ ok: true, locked: !!code_(), hint: hint_() });
@@ -79,7 +80,7 @@ function doGet(e) {
         var o = {};
         k.cols.forEach(function (c, j) { o[c] = cell_(c, rows[i][j]); });
         if (!o.id) continue;
-        if (kind === 'letters' && o.openAt && o.openAt > day) { o.message = ''; o.locked = true; }   // 타임캡슐은 그날까지 비밀
+        if (kind === 'letters' && o.openAt && o.openAt > day) { o.message = ''; o.locked = true; }   // a time capsule stays secret until its day
         out.push(o);
       }
     }
@@ -88,13 +89,13 @@ function doGet(e) {
   return json_({ ok: true, data: data });
 }
 
-/* 쓰기 */
+/* Writing */
 function doPost(e) {
   var b = {};
   try { b = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { return json_({ ok: false, error: 'bad json' }); }
   if (!okCode_(b.code)) return json_({ ok: false, error: 'code' });
   var kind = String(b.kind || '');
-  if (kind === 'setcode') {   // 🔒 암호 걸기·바꾸기 (newCode가 비면 없애기)
+  if (kind === 'setcode') {   // 🔒 set · change the password (an empty newCode removes it)
     var next = String(b.newCode || '').trim().slice(0, 30);
     PROPS.setProperty('FAMILY_CODE', next);
     PROPS.setProperty('FAMILY_HINT', next ? String(b.hint || '').trim().slice(0, 40) : '');
@@ -116,7 +117,7 @@ function doPost(e) {
     if (c === 'who') v = v.replace(/[^\w-]/g, '').slice(0, 20);
     if ((c === 'day' || c === 'openAt') && v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) v = '';
     if (LIMIT[c]) v = v.slice(0, LIMIT[c]);
-    return "'" + v;   // 글자 그대로 저장 (=로 시작해도 수식이 되지 않게, 날짜로 바뀌지 않게)
+    return "'" + v;   // stored as plain text (so it never becomes a formula when it starts with =, or turns into a date)
   });
   if (kind === 'letters' && !String(b.message || '').trim()) return json_({ ok: false, error: 'empty' });
   var lock = LockService.getScriptLock();

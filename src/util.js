@@ -1,12 +1,13 @@
 import * as THREE from 'three';
+import { isKo } from './i18n.js';
 
 export const isMobile = matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
-/* 움직임을 줄여 달라는 설정 (휴대폰 접근성 설정 또는 메뉴의 '효과 줄이기') */
+/* 'Reduce motion' setting (phone accessibility setting, or 'reduce effects' in the menu) */
 export const reduceMotion = (() => {
   try { return matchMedia('(prefers-reduced-motion: reduce)').matches || localStorage.getItem('family-lite') === '1'; } catch { return false; }
 })();
 
-/* ---------- 툰 재질 (부드러운 3단 음영) ---------- */
+/* ---------- Toon material (soft 3-step shading) ---------- */
 export const gradientMap = (() => {
   const data = new Uint8Array([150, 150, 150, 255, 215, 215, 215, 255, 255, 255, 255, 255]);
   const tex = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
@@ -25,7 +26,7 @@ export function toon(color, opts = {}) {
   return m;
 }
 
-/* ---------- 그림자 설정 ---------- */
+/* ---------- Shadow settings ---------- */
 export function shadow(obj, cast = true, receive = true) {
   obj.traverse(o => { if (o.isMesh) { o.castShadow = cast; o.receiveShadow = receive; } });
   return obj;
@@ -38,10 +39,11 @@ export function mesh(geo, color, x = 0, y = 0, z = 0, opts) {
   return m;
 }
 
-/* ---------- 캔버스로 글자 텍스처 ---------- */
+/* ---------- Text texture drawn on a canvas ----------
+   fit = the widest a line may be (px): English text that is wider gets a smaller font (Korean keeps its size) */
 export function textCanvas(lines, {
   w = 512, h = 256, bg = '#FFF6E6', color = '#4A3528', font = 'Jua', size = 56,
-  radius = 40, border = null, sub = null, subSize = 30,
+  radius = 40, border = null, sub = null, subSize = 30, fit = 0,
 } = {}) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
@@ -53,9 +55,11 @@ export function textCanvas(lines, {
   }
   g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
   const arr = Array.isArray(lines) ? lines : [lines];
+  const setFont = () => { g.font = `${font === 'Jua' ? '' : '700 '}${size}px "${font}", sans-serif`; };   // Jua has only one weight
+  setFont();
+  if (fit && !isKo) { const wide = Math.max(...arr.map(l => g.measureText(l).width)); if (wide > fit) { size = Math.floor(size * fit / wide); setFont(); } }
   const total = arr.length * size * 1.25 + (sub ? subSize * 1.5 : 0);
   let y = h / 2 - total / 2 + size * 0.62;
-  g.font = `${font === 'Jua' ? '' : '700 '}${size}px "${font}", sans-serif`;   // Jua는 굵기가 하나
   for (const l of arr) { g.fillText(l, w / 2, y); y += size * 1.25; }
   if (sub) { g.font = `${subSize}px "Gowun Dodum", sans-serif`; g.globalAlpha = .7; g.fillText(sub, w / 2, y + subSize * 0.2); }
   return c;
@@ -74,14 +78,14 @@ export function canvasTex(canvas) {
   return t;
 }
 
-/* ---------- 머리 위에 떠 있는 이름표 (긴 글은 자동으로 작게) ---------- */
+/* ---------- Name tag floating overhead (long text gets smaller automatically; English may go a little smaller) ---------- */
 export function labelSprite(text, { scale = 4.2, bg = 'rgba(255,248,236,.95)', color = '#4A3528' } = {}) {
   const c = document.createElement('canvas');
   c.width = 512; c.height = 128;
   const g = c.getContext('2d');
   let size = 56;
   g.font = `${size}px "Jua", sans-serif`;
-  while (g.measureText(text).width > 430 && size > 32) { size -= 2; g.font = `${size}px "Jua", sans-serif`; }
+  while (g.measureText(text).width > 430 && size > (isKo ? 32 : 26)) { size -= 2; g.font = `${size}px "Jua", sans-serif`; }
   const tw = Math.min(490, g.measureText(text).width + 70);
   g.fillStyle = bg; g.shadowColor = 'rgba(110,70,40,.28)'; g.shadowBlur = 12; g.shadowOffsetY = 4;
   roundRect(g, (512 - tw) / 2, 18, tw, 86, 43); g.fill();
@@ -94,7 +98,7 @@ export function labelSprite(text, { scale = 4.2, bg = 'rgba(255,248,236,.95)', c
   return sp;
 }
 
-/* ---------- 날짜 도우미 (common.js에 있음) ---------- */
+/* ---------- Date helpers (they live in common.js) ---------- */
 export { formatKDate } from './common.js';
 
 export const rand = (a, b) => a + Math.random() * (b - a);

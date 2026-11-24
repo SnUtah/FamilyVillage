@@ -1,19 +1,21 @@
+import { L } from './i18n.js';
 import { demoPhoto } from './demo-photos.js';
 
 /* =========================================================
-   3D와 상관없는 공용 도구 (날짜·시계, 사진 목록, 진동)
-   3D가 안 되는 휴대폰에서도 '글로 보기'가 동작하도록 따로 둡니다.
+   Shared tools that do not need 3D (date · clock, photo lists, vibration)
+   Kept separate so the 'Text view' works even on phones without 3D.
    ========================================================= */
-const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const DAYS = L(['일', '월', '화', '수', '목', '금', '토'], ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+export const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const F = () => window.FAMILY || {};
 
 export const toKST = d => { try { return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })); } catch { return new Date(d.getTime() + (d.getTimezoneOffset() + 540) * 60000); } };
 const pad = n => String(n).padStart(2, '0');
 
-/* ---------- 시계 ----------
-   주소 끝에 #now=2027-08-21T10:00 처럼 시각을 정할 수 있고,
-   #demo 를 붙이면 '가족 중 다음 생일인 사람의 생일 아침'으로 시계가 맞춰져요.
-   (테스트용: 생일 축하 모드, 타임캡슐 열림, 오늘의 질문 바뀜을 미리 볼 수 있어요) */
+/* ---------- Clock ----------
+   You can set the time at the end of the address, like #now=2027-08-21T10:00,
+   and #demo sets the clock to 'the morning of the next birthday in the family'.
+   (For testing: preview the birthday mode, a time capsule opening and the question of the day changing) */
 let clockBase = null, clockT0 = 0;
 function nextBirthdayMorning() {
   const n = toKST(new Date());
@@ -44,7 +46,7 @@ addEventListener('hashchange', readClockHash);
 export function now() { return clockBase ? new Date(clockBase + (Date.now() - clockT0)) : new Date(); }
 export const isDemoClock = () => !!clockBase;
 
-/* 한국 날짜 'YYYY-MM-DD' (오늘의 질문·하트·출석은 이 날짜로 하루를 셉니다) */
+/* Korean date 'YYYY-MM-DD' (the question of the day, hearts and attendance count days by this date) */
 export function dayKey(d = now()) {
   const k = toKST(d);
   return `${k.getFullYear()}-${pad(k.getMonth() + 1)}-${pad(k.getDate())}`;
@@ -54,7 +56,7 @@ export function addDays(key, n) {
   const t = new Date(Date.UTC(y, m - 1, d + n));
   return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
 }
-export function daysBetween(a, b) {   // b - a (일)
+export function daysBetween(a, b) {   // b - a (days)
   const p = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
   return Math.round((p(b) - p(a)) / 864e5);
 }
@@ -62,40 +64,41 @@ export function daysBetween(a, b) {   // b - a (일)
 export function formatKDate(d = now()) {
   const k = toKST(d);
   const h = k.getHours(), m = k.getMinutes();
-  const ap = h < 12 ? '오전' : '오후';
   const hh = h % 12 === 0 ? 12 : h % 12;
   return {
-    date: `${k.getFullYear()}년 ${k.getMonth() + 1}월 ${k.getDate()}일 ${DAYS[k.getDay()]}요일`,
-    short: `${k.getMonth() + 1}월 ${k.getDate()}일 (${DAYS[k.getDay()]})`,
-    time: `${ap} ${hh}시${m ? ' ' + m + '분' : ''}`,
+    date: L(`${k.getFullYear()}년 ${k.getMonth() + 1}월 ${k.getDate()}일 ${DAYS[k.getDay()]}요일`,
+      `${DAYS[k.getDay()]}, ${MONTHS_EN[k.getMonth()]} ${k.getDate()}, ${k.getFullYear()}`),
+    short: L(`${k.getMonth() + 1}월 ${k.getDate()}일 (${DAYS[k.getDay()]})`, `${DAYS[k.getDay()]}, ${MONTHS_EN[k.getMonth()]} ${k.getDate()}`),
+    time: L(`${h < 12 ? '오전' : '오후'} ${hh}시${m ? ' ' + m + '분' : ''}`, `${pad(h)}:${pad(m)}`),
     k,
   };
 }
-/* 'YYYY-MM-DD' → '5월 3일 (수)' */
+/* 'YYYY-MM-DD' → '5월 3일 (수)' / 'Wed, May 3' */
 export function keyLabel(key, withDay = true) {
   const [y, m, d] = key.split('-').map(Number);
   const w = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  return `${m}월 ${d}일${withDay ? ` (${DAYS[w]})` : ''}`;
+  return L(`${m}월 ${d}일${withDay ? ` (${DAYS[w]})` : ''}`, `${withDay ? `${DAYS[w]}, ` : ''}${MONTHS_EN[m - 1]} ${d}`);
 }
 
-/* 글에 찍히는 날짜: 오늘이면 '오늘', 어제면 '어제', 아니면 '5월 3일' */
+/* Date shown on a post: 'Today' if it is today, 'Yesterday' for yesterday, otherwise 'May 3' */
 export function shortDate(iso) {
   const t = new Date(iso);
   if (isNaN(t)) return '';
   const diff = daysBetween(dayKey(t), dayKey());
-  if (diff === 0) return '오늘';
-  if (diff === 1) return '어제';
+  if (diff === 0) return L('오늘', 'Today');
+  if (diff === 1) return L('어제', 'Yesterday');
   const k = toKST(t);
-  return `${k.getMonth() + 1}월 ${k.getDate()}일`;
+  return L(`${k.getMonth() + 1}월 ${k.getDate()}일`, `${MONTHS_EN[k.getMonth()]} ${k.getDate()}`);
 }
 
-/* 짧은 진동 (안드로이드에서만 동작, 아이폰은 조용히 무시) */
-/* 받침에 맞는 조사: josa('첫째', '으로/로') → '첫째로', josa('동생', '이/가') → '동생이' (한글이 아니면 '(으)로'처럼) */
+/* Short vibration (Android only; iPhones quietly ignore it) */
+/* Korean particle that fits the last syllable: josa('첫째', '으로/로') → '첫째로', josa('동생', '이/가') → '동생이'
+   (for a non-Korean word it writes both, like '(으)로'). Korean text only. */
 export function josa(word, pair) {
   const w = String(word ?? ''), c = w.charCodeAt(w.length - 1), [a, b] = pair.split('/');
   if (!(c >= 0xAC00 && c <= 0xD7A3)) return `${w}(${a.slice(0, a.length - b.length) || a})${b}`;
   const jong = (c - 0xAC00) % 28;
-  if (a === '으로' && jong === 8) return w + b;   // ㄹ 받침은 '로' (예: 딸로)
+  if (a === '으로' && jong === 8) return w + b;   // a final ㄹ takes '로' (e.g. 딸로)
   return w + (jong ? a : b);
 }
 
@@ -103,8 +106,8 @@ export function buzz(ms = 10) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
-/* config → 테마별 사진 목록
-   demoPhotos가 켜져 있으면 src가 'demo:테마:번호'가 되고, photoURL()이 그림으로 바꿔줍니다. */
+/* config → photo list per theme
+   If demoPhotos is on, src becomes 'demo:theme:number' and photoURL() turns it into a drawing. */
 export function photoThemes() {
   const W = F();
   const themes = W.museum?.themes || [];
@@ -125,7 +128,7 @@ export function photoThemes() {
   });
 }
 
-/* 사진 주소 (데모 사진이면 그 자리에서 그려서 데이터 주소로) */
+/* Photo address (a demo photo is drawn on the spot and returned as a data address) */
 const demoCache = new Map();
 export const isDemo = p => typeof p?.src === 'string' && p.src.startsWith('demo:');
 export function photoURL(p, size = 'full') {
@@ -138,8 +141,8 @@ export function photoURL(p, size = 'full') {
   return demoCache.get(key);
 }
 
-/* 사진이 아직 없을 때 보여줄 안내 이미지 */
-export function placeholderCanvas(theme, idx, src, w = 600, h = 600, msg = '사진을 넣어주세요') {
+/* Placeholder image shown while a photo is missing */
+export function placeholderCanvas(theme, idx, src, w = 600, h = 600, msg = L('사진을 넣어주세요', 'Add a photo here')) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d');
@@ -156,7 +159,7 @@ export function placeholderCanvas(theme, idx, src, w = 600, h = 600, msg = '사�
   return c;
 }
 
-/* ---------- 💬 오늘의 질문: 하루에 하나씩 차례로 ---------- */
+/* ---------- 💬 Question of the day: one a day, in order ---------- */
 export function questionList() {
   return (F().questions || []).map(q => (typeof q === 'string' ? { q } : q)).filter(q => q && q.q);
 }

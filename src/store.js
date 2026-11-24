@@ -1,21 +1,21 @@
 import { now, dayKey, addDays, questionList, questionIndex } from './common.js';
 
 /* =========================================================
-   🗂️ 가족이 남기는 글 보관 (편지 · 오늘의 질문 답 · 답장 · 하트 · 출석 · 물 주기 · 투표 · 점수 · 모습)
-   - 기본(sheet 비움): 그 휴대폰(브라우저)에 저장되고 config.js의 samples(예시)와 합쳐서 보여요
-   - sheet에 구글 시트 웹 앱 주소를 넣으면 모든 글이 시트에 모이고 가족 모두가 함께 봐요
-     (tools/가족_시트_연결.md, 스크립트는 tools/family-sheet.gs)
-   - 보내기에 실패하면 휴대폰에 보관(pending)했다가 다음에 자동으로 다시 보내요
-   - 시트에서 받아 온 목록은 휴대폰에도 복사해 두어, 연결이 느려도 바로 보여요
+   🗂️ Storage for what the family leaves (letters · answers to the question of the day · replies · hearts · attendance · watering · votes · scores · looks)
+   - Default (sheet empty): saved on that phone (browser) and shown together with the samples (examples) from config.js
+   - Put a Google Sheet web app address in sheet and everything is collected in the sheet for the whole family to see
+     (tools/가족_시트_연결.md; the script is tools/family-sheet.gs)
+   - If sending fails, it is kept on the phone (pending) and sent again automatically later
+   - The list loaded from the sheet is also copied to the phone, so it shows right away even on a slow connection
    ========================================================= */
 const F = () => window.FAMILY || {};
 export const KINDS = ['letters', 'answers', 'replies', 'hearts', 'visits', 'water', 'votes', 'polls', 'scores', 'looks'];
-const UPSERT = new Set(['votes', 'looks', 'answers']);   // 같은 id면 새 것으로 바꿈 (투표·모습·답 고치기)
+const UPSERT = new Set(['votes', 'looks', 'answers']);   // same id → replaced by the newer one (changing a vote, look or answer)
 export const remoteOn = () => !!F().sheet;
 const site = () => String(F().site || 'main');
 
-const LS_MINE = 'family-mine-v1';      // 이 휴대폰에서 남긴 것 {kind: [..]}
-const LS_REMOTE = 'family-remote-v1';  // 시트에서 받아 온 마지막 사본
+const LS_MINE = 'family-mine-v1';      // what was left on this phone {kind: [..]}
+const LS_REMOTE = 'family-remote-v1';  // last copy loaded from the sheet
 const LS_CODE = 'family-code';
 const lsObj = k => { try { const v = JSON.parse(localStorage.getItem(k) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -23,22 +23,22 @@ export const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
   : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 const notify = detail => { try { dispatchEvent(new CustomEvent('family:data', { detail })); } catch {} };
 
-/* ---------- 🔒 가족 암호 (선택) ----------
-   기본은 암호 없이 누구나 바로 들어와요. 시작 화면의 ⚙️ 또는 메뉴의 '가족 암호'에서 걸 수 있어요.
-   - 시트 연결: 암호는 시트 스크립트(Script Properties)에 저장돼 가족 모두에게 적용되고,
-                암호가 걸려 있으면 맞는 암호를 보내야만 글을 내려줘요.
-   - 시트 없음(미리보기): 이 휴대폰에만 저장되는 '흉내' 잠금이에요. */
+/* ---------- 🔒 Family password (optional) ----------
+   By default anyone can come straight in without a password. It can be set with ⚙️ on the start screen or 'Family password' in the menu.
+   - With a sheet: the password is stored in the sheet script (Script Properties) and applies to the whole family;
+                   while it is set, the sheet only hands out posts when the right password is sent.
+   - Without a sheet (preview): a 'pretend' lock saved only on this phone. */
 const LS_LOCAL_LOCK = 'family-local-lock';
 const localLock = () => { try { return JSON.parse(localStorage.getItem(LS_LOCAL_LOCK) || 'null') || {}; } catch { return {}; } };
 export const savedCode = () => { try { return localStorage.getItem(LS_CODE) || ''; } catch { return ''; } };
 const setCode = c => { try { c ? localStorage.setItem(LS_CODE, c) : localStorage.removeItem(LS_CODE); } catch {} };
 const lock = { locked: false, hint: '', known: false };
 export const lockInfo = () => ({ ...lock, remote: remoteOn() });
-/* 암호가 걸려 있는지 알아보기 (시트는 암호 없이도 '걸려 있다/아니다'와 힌트는 알려줘요) */
+/* Find out whether a password is set (the sheet tells 'set / not set' and the hint even without the password) */
 export async function loadLock() {
   if (!remoteOn()) { const l = localLock(); lock.locked = !!l.code; lock.hint = l.hint || ''; lock.known = true; return lockInfo(); }
   try { const j = await call('GET', { action: 'status', quiet: 1 }); lock.locked = !!j.locked; lock.hint = String(j.hint || ''); lock.known = true; }
-  catch { lock.locked = !!savedCode(); lock.known = false; }   // 연결이 안 되면 이 휴대폰이 아는 대로
+  catch { lock.locked = !!savedCode(); lock.known = false; }   // without a connection, go by what this phone knows
   return lockInfo();
 }
 export const lockRequired = () => lock.locked;
@@ -65,7 +65,7 @@ export async function checkCode(code) {
   }
 }
 
-/* 암호 걸기 · 바꾸기 · 없애기 (next가 비어 있으면 없애기). 걸려 있으면 지금 암호가 맞아야 해요. */
+/* Set · change · remove the password (an empty next removes it). If one is set, the current password must match. */
 export async function setFamilyCode({ current = '', next = '', hint = '' } = {}) {
   next = String(next || '').trim().slice(0, 30);
   hint = String(hint || '').trim().slice(0, 40);
@@ -83,8 +83,8 @@ export async function setFamilyCode({ current = '', next = '', hint = '' } = {})
   return { ok: true };
 }
 
-/* ---------- 예시 데이터 (config.samples) ----------
-   한 번만 만들어 id·시간을 고정합니다 (꽃밭이 같은 편지를 두 번 심지 않도록) */
+/* ---------- Example data (config.samples) ----------
+   Built only once so ids and times stay fixed (so the flower garden never plants the same letter twice) */
 let seedCache = null;
 const nameOf = id => (F().members || []).find(m => m.id === id)?.name || id;
 function seeds() {
@@ -106,7 +106,7 @@ function seeds() {
   out.water = (S.water || []).map((v, i) => ({ id: `${v.who}-${dayOf(v.daysAgo)}`, who: v.who, day: dayOf(v.daysAgo), time: at(v.daysAgo, i), seed: true }));
   out.votes = (S.votes || []).map((v, i) => ({ id: `${v.who}-${v.poll}`, who: v.who, poll: v.poll, choice: +v.choice || 0, time: at(1, i), seed: true }));
   out.scores = (S.scores || []).map((s, i) => ({ id: `seed-scores-${i}`, who: s.who, name: nameOf(s.who), score: +s.score || 0, total: +s.total || 0, time: at(2, i), seed: true }));
-  // 오늘의 질문 예시 답: 지난 2주 동안 그날 나온 질문의 samples를 그날의 답으로
+  // Example answers to the question of the day: for each of the last 2 weeks, that day's question samples become that day's answers
   out.answers = [];
   const qs = questionList();
   for (let d = 0; d < 14 && qs.length; d++) {
@@ -120,11 +120,11 @@ function seeds() {
   return out;
 }
 
-/* ---------- 시트와 주고받기 ---------- */
+/* ---------- Talking to the sheet ---------- */
 const remote = { data: remoteOn() ? lsObj(LS_REMOTE) : {}, at: 0, loading: null, error: null, ok: false };
 export const status = () => ({ remote: remoteOn(), loading: !!remote.loading, error: remote.error, loaded: remote.ok, at: remote.at });
 
-/* GET은 목록, POST는 한 줄. 본문을 text/plain으로 보내야 브라우저가 사전 요청(preflight) 없이 바로 보냅니다. */
+/* GET = list, POST = one row. The body is sent as text/plain so the browser sends it right away without a preflight request. */
 async function call(method, params, body) {
   const u = new URL(F().sheet);
   u.searchParams.set('site', site());
@@ -176,7 +176,7 @@ async function sendPending() {
   if (changed) lsSet(LS_MINE, mine);
 }
 
-/* 시트에서 전부 받아 오기. 짧은 시간 안에 여러 번 불러도 한 번만 요청합니다. */
+/* Load everything from the sheet. Several calls in a short time make only one request. */
 export function refresh({ force = false } = {}) {
   if (!remoteOn()) return Promise.resolve();
   if (remote.loading) return remote.loading;
@@ -189,7 +189,7 @@ export function refresh({ force = false } = {}) {
       KINDS.forEach(k => { data[k] = (Array.isArray(j.data?.[k]) ? j.data[k] : []).map(x => clean(k, x)).filter(x => x.id); });
       remote.data = data; remote.at = Date.now(); remote.ok = true; remote.error = null;
       lsSet(LS_REMOTE, data);
-      // 시트에 들어간 내 글은 '보내는 중' 표시를 지움
+      // my posts that reached the sheet lose their 'sending' mark
       const mine = lsObj(LS_MINE); let changed = false;
       KINDS.forEach(k => {
         const ids = new Set(data[k].map(x => x.id));
@@ -206,7 +206,7 @@ export function refresh({ force = false } = {}) {
   return remote.loading;
 }
 
-/* 한 종류의 목록 (최신순). 내 글 + 시트 + 예시를 합치고 id가 같으면 하나만 */
+/* The list of one kind (newest first). Mine + sheet + examples combined; one entry per id */
 export function list(kind) {
   const mine = (lsObj(LS_MINE)[kind] || []).map(x => ({ ...x, mine: true }));
   const sheet = remoteOn() ? (remote.data[kind] || []) : [];
@@ -222,14 +222,14 @@ export function list(kind) {
   return [...seen.values()].sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')));
 }
 
-/* 하나 남기기. 시트가 연결돼 있으면 보내고, 실패하면 휴대폰에 보관했다가 나중에 다시 보냅니다.
-   돌려주는 값: { ok, item, sent } */
+/* Leave one item. If a sheet is connected it is sent; if that fails it is kept on the phone and sent again later.
+   Returns: { ok, item, sent } */
 export async function add(kind, fields) {
   const item = { id: fields.id || uuid(), time: new Date().toISOString(), ...fields };
   const mine = lsObj(LS_MINE);
   mine[kind] = [remoteOn() ? { ...item, pending: true } : item, ...(mine[kind] || []).filter(x => x.id !== item.id)].slice(0, 300);
   lsSet(LS_MINE, mine);
-  // (보낸 쪽 화면이 먼저 다시 그리도록 알림은 한 박자 늦게)
+  // (the update event comes a beat later so the sending screen redraws first)
   const later = () => setTimeout(() => notify({ kind, item }), 0);
   if (!remoteOn()) { later(); return { ok: true, item, sent: false }; }
   try {

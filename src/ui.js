@@ -1,25 +1,26 @@
+import { L } from './i18n.js';
 import { placeholderCanvas, buzz, photoURL, shortDate, dayKey, addDays, keyLabel, daysBetween, josa } from './common.js';
 import { list, add, refresh, remoteOn, status } from './store.js';
 import {
-  members, member, memberName, memberColor, callName, me, meId, repliesFor, isLockedLetter, isForMe, markRead, isRead, unreadForMe, bestScores, villageName,
+  members, member, memberName, memberColor, callName, me, meId, repliesFor, isLockedLetter, isForMe, markRead, isRead, unreadForMe, bestScores, villageName, postName, inDays,
 } from './family.js';
 import { sound } from './sound.js';
 
 /* =========================================================
-   화면 UI: 모달, 토스트, 라이트박스, 각 오브젝트 내용
+   Screen UI: modal, toast, lightbox, the content of each object
 
-   각 내용은 { html, mount } 를 돌려주는 ○○View()와
-   그것을 아래에서 올라오는 팝업으로 여는 show○○()로 나뉩니다.
-   '📖 글로 보기'(textview.js)는 같은 View들을 한 페이지에 이어 붙여 씁니다.
-   가족 기능 화면(우리 가족·오늘의 질문·달력·투표·나무·꾸미기)은 views.js에 있어요.
+   Each piece of content is split into a xxxView() that returns { html, mount }
+   and a showXxx() that opens it in a popup sliding up from the bottom.
+   '📖 Text view' (textview.js) puts the same views one after another on one page.
+   The family feature screens (our family · question of the day · calendar · polls · tree · customizing) are in views.js.
    ========================================================= */
 const W = window.FAMILY;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/* ---------- 휴대폰 뒤로가기 = 팝업 닫기 ----------
-   팝업을 열 때마다 방문 기록을 하나 쌓아서, 뒤로가기를 눌러도
-   사이트를 나가지 않고 팝업(또는 사진관, 글로 보기)만 닫히게 합니다. */
+/* ---------- Phone back button = close the popup ----------
+   Each popup adds one history entry, so when someone presses back
+   only the popup (or the gallery, or the text view) closes instead of leaving the site. */
 const backStack = [];
 let selfBack = 0;
 export function pushBack(close) {
@@ -38,7 +39,7 @@ addEventListener('popstate', () => {
   backStack.pop()?.();
 });
 
-/* ---------- 아래에서 올라오는 팝업 ---------- */
+/* ---------- Popup sliding up from the bottom ---------- */
 let cleanup = null, closeTimer = null;
 const modalEl = () => $('#modal');
 function hideModal() {
@@ -102,11 +103,11 @@ export function confetti(emojis = ['🌸', '💗', '✨', '🎉', '💐']) {
   }
 }
 
-export async function copy(text, msg = '복사되었어요') {
+export async function copy(text, msg = L('복사되었어요', 'Copied')) {
   let ok = false;
   try { await navigator.clipboard.writeText(text); ok = true; }
   catch {
-    // 오래된 브라우저·http 미리보기용 예비 방법
+    // fallback for old browsers and http previews
     const ta = document.createElement('textarea');
     ta.value = text; ta.readOnly = true;
     ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;-webkit-user-select:text;user-select:text';
@@ -115,11 +116,11 @@ export async function copy(text, msg = '복사되었어요') {
     ta.remove();
   }
   buzz(10);
-  toast(ok ? `📋 ${msg}` : '복사가 안 돼요. 글자를 길게 눌러 복사해 주세요');
+  toast(ok ? `📋 ${msg}` : L('복사가 안 돼요. 글자를 길게 눌러 복사해 주세요', "Couldn't copy. Press and hold the text to copy it"));
   return ok;
 }
 
-/* data-copy가 있는 버튼·행을 누르면 복사 (행 안의 버튼을 눌렀을 땐 한 번만) */
+/* Tapping a button or row with data-copy copies it (only once when a button inside the row is tapped) */
 function bindCopy(root) {
   root.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', e => {
     if (b.tagName !== 'BUTTON' && e.target.closest('button')) return;
@@ -127,38 +128,38 @@ function bindCopy(root) {
   }));
 }
 
-/* ---------- 🙂 작은 캐릭터 얼굴 (구성원 목록·편지·점수판에서 같이 씀) ---------- */
+/* ---------- 🙂 Small character face (shared by the member list, letters and scoreboard) ---------- */
 export function avatarHTML(look = {}, cls = '') {
   const c = ['avatar', look.longHair ? 'long' : '', look.kid ? 'kid' : '', cls].filter(Boolean).join(' ');
   return `<span class="${c}" style="--outfit:${esc(look.outfit || '#8FB8DE')};--hair:${esc(look.hair || '#5A3A2A')}" aria-hidden="true"><i class="hd"></i><i class="bd"></i><i class="lg"></i>${look.glasses ? '<i class="gls"></i>' : ''}${look.hat ? `<i class="ht ht-${esc(look.hat)}"></i>` : ''}</span>`;
 }
 const whoChip = (id, name) => {
   const m = member(id);
-  return `<span class="who-chip" style="--c:${esc(m ? m.look.outfit : '#E6D5C6')}">${esc(m ? (m.nick || m.role || m.name) : (name || '손님'))}</span>`;
+  return `<span class="who-chip" style="--c:${esc(m ? m.look.outfit : '#E6D5C6')}">${esc(m ? (m.nick || m.role || m.name) : (name || L('손님', 'Guest')))}</span>`;
 };
 
-/* 시트 연결 상태 한 줄: 불러오는 중 · 실패(다시 시도) · 마지막 사본 */
+/* One line of sheet status: loading · failed (try again) · last copy */
 export function paintStatus(el) {
   if (!el) return;
   if (!remoteOn()) { el.hidden = true; return; }
   const s = status();
   el.hidden = false;
-  if (s.loading && !s.loaded) el.textContent = '가족 소식을 불러오는 중…';
+  if (s.loading && !s.loaded) el.textContent = L('가족 소식을 불러오는 중…', 'Loading family news…');
   else if (s.error && !s.loaded) {
-    el.innerHTML = '지금은 소식을 불러올 수 없어요. <button type="button" class="linklike st-retry">다시 시도</button>';
+    el.innerHTML = L('지금은 소식을 불러올 수 없어요. <button type="button" class="linklike st-retry">다시 시도</button>', 'Can\'t load the news right now. <button type="button" class="linklike st-retry">Try again</button>');
     el.querySelector('.st-retry').onclick = () => { refresh({ force: true }); paintStatus(el); };
-  } else if (s.error) el.textContent = '마지막으로 받아 온 소식이에요 (지금은 연결이 어려워요)';
+  } else if (s.error) el.textContent = L('마지막으로 받아 온 소식이에요 (지금은 연결이 어려워요)', "This is the last news we got (can't connect right now)");
   else el.hidden = true;
 }
-/* 데이터가 바뀌면 다시 그리기 (창을 닫으면 그만 듣기) */
+/* Redraw when the data changes (stop listening when the window closes) */
 export function onData(render) {
   const h = () => render();
   addEventListener('family:data', h);
   return () => removeEventListener('family:data', h);
 }
-const sentToast = (r, okMsg) => toast(r.ok ? okMsg : '휴대폰에 보관했어요. 연결되면 자동으로 보낼게요', r.ok ? 2400 : 3600);
+const sentToast = (r, okMsg) => toast(r.ok ? okMsg : L('휴대폰에 보관했어요. 연결되면 자동으로 보낼게요', "Saved on your phone. It will be sent automatically once you're connected"), r.ok ? 2400 : 3600);
 
-/* ---------- 💬 답장 · 반응 (편지와 오늘의 질문 답 아래) ---------- */
+/* ---------- 💬 Replies · reactions (under letters and answers to the question of the day) ---------- */
 const EMOJIS = ['👍', '😂', '🥹', '💗'];
 const emojiId = e => [...e].map(c => c.codePointAt(0).toString(16)).join('');
 export function replyView(target, { compact = false } = {}) {
@@ -170,14 +171,14 @@ export function replyView(target, { compact = false } = {}) {
       const { texts, reacts } = repliesFor(target);
       const my = meId(), canWrite = !!me();
       box.innerHTML = `
-        <div class="rx-emojis">${EMOJIS.map(e => { const set = reacts[e]; const n = set?.size || 0; return `<button type="button" class="rx-e${set?.has(my) ? ' on' : ''}" data-e="${e}" ${canWrite ? '' : 'disabled'} aria-label="${e} 반응 ${n}개">${e}${n ? `<b>${n}</b>` : ''}</button>`; }).join('')}</div>
+        <div class="rx-emojis">${EMOJIS.map(e => { const set = reacts[e]; const n = set?.size || 0; return `<button type="button" class="rx-e${set?.has(my) ? ' on' : ''}" data-e="${e}" ${canWrite ? '' : 'disabled'} aria-label="${L(`${e} 반응 ${n}개`, `${e} reactions: ${n}`)}">${e}${n ? `<b>${n}</b>` : ''}</button>`; }).join('')}</div>
         ${texts.length ? `<ul class="rx-list">${texts.map(r => `<li>${whoChip(r.who, r.name)} <span>${esc(r.text)}</span> <small>${shortDate(r.time)}</small></li>`).join('')}</ul>` : ''}
-        ${canWrite ? `${compact ? '<button type="button" class="linklike rx-open">💬 답장 쓰기</button>' : ''}<form class="rx-form" autocomplete="off" ${compact && !opened ? 'hidden' : ''}><input class="field rx-in" maxlength="80" placeholder="답장 한 줄 남기기" aria-label="답장"><button class="btn small pink" type="submit">보내기</button></form>` : ''}`;
+        ${canWrite ? `${compact ? `<button type="button" class="linklike rx-open">${L('💬 답장 쓰기', '💬 Reply')}</button>` : ''}<form class="rx-form" autocomplete="off" ${compact && !opened ? 'hidden' : ''}><input class="field rx-in" maxlength="80" placeholder="${L('답장 한 줄 남기기', 'Write a one-line reply')}" aria-label="${L('답장', 'Reply')}"><button class="btn small pink" type="submit">${L('보내기', 'Send')}</button></form>` : ''}`;
       const op = box.querySelector('.rx-open');
       if (op) op.onclick = () => { opened = true; op.hidden = true; const f = box.querySelector('.rx-form'); f.hidden = false; f.querySelector('.rx-in').focus(); };
       if (op && opened) op.hidden = true;
       box.querySelectorAll('.rx-e').forEach(b => b.onclick = async () => {
-        if (b.classList.contains('on')) { toast('이미 마음을 남겼어요 😊'); return; }
+        if (b.classList.contains('on')) { toast(L('이미 마음을 남겼어요 😊', 'You already reacted 😊')); return; }
         buzz(8); sound.sfx('heart');
         b.classList.add('on');
         await add('replies', { id: `${my}-${target}-${emojiId(b.dataset.e)}`, who: my, name: memberName(my), target, emoji: b.dataset.e, text: '' });
@@ -190,7 +191,7 @@ export function replyView(target, { compact = false } = {}) {
         if (!text) return;
         inp.value = '';
         const r = await add('replies', { who: my, name: memberName(my), target, text, emoji: '' });
-        sentToast(r, '💬 답장을 남겼어요');
+        sentToast(r, L('💬 답장을 남겼어요', '💬 Reply sent'));
         sound.sfx('paper');
         render();
       };
@@ -201,18 +202,18 @@ export function replyView(target, { compact = false } = {}) {
   return { html: `<div class="rx" data-rx="${esc(target)}"></div>`, mount };
 }
 
-/* ---------- ✉️ 안부 우체통: 편지 쓰기 + 봉투 목록 ----------
-   봉투를 누르면 편지지가 펼쳐집니다. 받는 사람을 고를 수 있고(모두에게 / 한 사람에게),
-   '타임캡슐'로 보내면 정한 날이 되어야 열려요. */
+/* ---------- ✉️ Mailbox: write a letter + envelope list ----------
+   Tapping an envelope unfolds the letter. You can pick who it is for (everyone / one person),
+   and a letter sent as a 'time capsule' opens only on the chosen day. */
 const envelopeHTML = (l, i) => {
   const locked = isLockedLetter(l), unread = !locked && isForMe(l) && !isRead(l.id);
-  const seal = l.pending ? '⏳' : locked ? '🔒' : l.openAt ? '🎁' : l.mine ? '✍️' : '💌';   // 🎁 = 열린 타임캡슐
-  const meta = l.pending ? '보내는 중' : locked ? `${keyLabel(l.openAt, false)}에 열려요` : `${l.to === 'all' ? '모두에게' : `To. ${callName(l.to)}`} · ${shortDate(l.time)}`;
+  const seal = l.pending ? '⏳' : locked ? '🔒' : l.openAt ? '🎁' : l.mine ? '✍️' : '💌';   // 🎁 = an opened time capsule
+  const meta = l.pending ? L('보내는 중', 'Sending') : locked ? L(`${keyLabel(l.openAt, false)}에 열려요`, `Opens ${keyLabel(l.openAt, false)}`) : `${l.to === 'all' ? L('모두에게', 'To everyone') : L(`To. ${callName(l.to)}`, `To ${callName(l.to)}`)} · ${shortDate(l.time)}`;
   return `
-  <button type="button" class="env${l.mine ? ' mine' : ''}${l.pending ? ' pending' : ''}${locked ? ' locked' : ''}${unread ? ' unread' : ''}" style="--c:${esc(memberColor(l.who))}" data-i="${i}" aria-label="${esc(l.name || memberName(l.who))}의 편지 열기">
+  <button type="button" class="env${l.mine ? ' mine' : ''}${l.pending ? ' pending' : ''}${locked ? ' locked' : ''}${unread ? ' unread' : ''}" style="--c:${esc(memberColor(l.who))}" data-i="${i}" aria-label="${L(`${esc(postName(l.who, l.name))}의 편지 열기`, `Open the letter from ${esc(postName(l.who, l.name))}`)}">
     <span class="flap" aria-hidden="true"></span>
     <span class="seal" aria-hidden="true">${seal}</span>
-    <b class="env-name">${locked ? '⏳ 타임캡슐' : esc(l.name || memberName(l.who))}</b>
+    <b class="env-name">${locked ? L('⏳ 타임캡슐', '⏳ Time capsule') : esc(postName(l.who, l.name))}</b>
     <small class="env-meta">${esc(meta)}</small>
   </button>`;
 };
@@ -221,21 +222,21 @@ export function mailboxView(onSent, { onBack, to: presetTo = '', filter: presetF
   const meM = me(), guest = !meM;
   const others = members().filter(m => m.id !== meId());
   const html = `
-    <p class="muted" style="line-height:1.7">${guest ? '가족에게 안부 한마디 남겨 주세요 💌' : `<b>${esc(meM.role || meM.name)}</b>${esc(josa(meM.role || meM.name, '이/가').slice(String(meM.role || meM.name).length))} 가족에게 보내는 편지예요 💌`}</p>
+    <p class="muted" style="line-height:1.7">${guest ? L('가족에게 안부 한마디 남겨 주세요 💌', 'Leave the family a quick hello 💌') : L(`<b>${esc(meM.role || meM.name)}</b>${esc(josa(meM.role || meM.name, '이/가').slice(String(meM.role || meM.name).length))} 가족에게 보내는 편지예요 💌`, `A letter from <b>${esc(meM.role || meM.name)}</b> to the family 💌`)}</p>
     <form class="letter-form" autocomplete="off">
-      ${guest ? '<input class="field l-name" maxlength="20" placeholder="이름" aria-label="이름" />' : ''}
-      <div class="to-row" role="group" aria-label="받는 사람">
-        <button type="button" class="to-chip on" data-to="all">👨‍👩‍👧‍👦 모두에게</button>
+      ${guest ? `<input class="field l-name" maxlength="20" placeholder="${L('이름', 'Name')}" aria-label="${L('이름', 'Name')}" />` : ''}
+      <div class="to-row" role="group" aria-label="${L('받는 사람', 'Recipient')}">
+        <button type="button" class="to-chip on" data-to="all">${L('👨‍👩‍👧‍👦 모두에게', '👨‍👩‍👧‍👦 Everyone')}</button>
         ${others.map(m => `<button type="button" class="to-chip" data-to="${esc(m.id)}" style="--c:${esc(m.look.outfit)}">${esc(m.nick || m.role || m.name)}</button>`).join('')}
       </div>
-      <textarea class="field l-msg" maxlength="500" placeholder="하고 싶은 말을 적어 주세요 (500자 이내)" aria-label="편지 내용"></textarea>
-      <label class="tc-row"><input type="checkbox" class="l-tc"> ⏳ 타임캡슐로 보내기 <small class="muted">정한 날이 되어야 열려요</small></label>
-      <div class="tc-date" hidden><input type="date" class="field l-open" aria-label="열리는 날"></div>
-      <button class="btn pink l-send" type="submit" style="width:100%;margin-top:10px;padding:14px">✉️ 편지 보내기</button>
+      <textarea class="field l-msg" maxlength="500" placeholder="${L('하고 싶은 말을 적어 주세요 (500자 이내)', 'Write what you want to say (up to 500 characters)')}" aria-label="${L('편지 내용', 'Letter')}"></textarea>
+      <label class="tc-row"><input type="checkbox" class="l-tc"> ${L('⏳ 타임캡슐로 보내기 <small class="muted">정한 날이 되어야 열려요</small>', '⏳ Send as a time capsule <small class="muted">It opens on the day you choose</small>')}</label>
+      <div class="tc-date" hidden><input type="date" class="field l-open" aria-label="${L('열리는 날', 'Opening day')}"></div>
+      <button class="btn pink l-send" type="submit" style="width:100%;margin-top:10px;padding:14px">${L('✉️ 편지 보내기', '✉️ Send letter')}</button>
     </form>
     <div class="divider"></div>
-    <div class="env-head"><b>💌 가족 편지</b><span class="muted l-count"></span></div>
-    ${guest ? '' : `<div class="seg l-filter"><button type="button" data-f="all">전체</button><button type="button" data-f="me">나에게 온 편지 <b class="l-unread"></b></button><button type="button" data-f="mine">내가 쓴 편지</button></div>`}
+    <div class="env-head"><b>${L('💌 가족 편지', '💌 Family letters')}</b><span class="muted l-count"></span></div>
+    ${guest ? '' : `<div class="seg l-filter"><button type="button" data-f="all">${L('전체', 'All')}</button><button type="button" data-f="me">${L('나에게 온 편지', 'To me')} <b class="l-unread"></b></button><button type="button" data-f="mine">${L('내가 쓴 편지', 'From me')}</button></div>`}
     <p class="muted l-status" role="status" hidden></p>
     <div class="env-grid l-list" style="margin-top:10px"></div>`;
   const mount = root => {
@@ -256,17 +257,17 @@ export function mailboxView(onSent, { onBack, to: presetTo = '', filter: presetF
       if (!root.isConnected) return;
       const all = list('letters');
       const shown = filter === 'me' ? all.filter(isForMe) : filter === 'mine' ? all.filter(l => l.who === meId()) : all;
-      countEl.textContent = all.length ? `${all.length}통` : '';
+      countEl.textContent = all.length ? L(`${all.length}통`, `${all.length} ${all.length === 1 ? 'letter' : 'letters'}`) : '';
       const ur = root.querySelector('.l-unread');
       if (ur) { const n = unreadForMe().length; ur.textContent = n ? n : ''; }
       root.querySelectorAll('.l-filter button').forEach(b => b.classList.toggle('on', b.dataset.f === filter));
       listEl.innerHTML = shown.length
         ? shown.slice(0, 60).map(envelopeHTML).join('')
-        : `<p class="muted">${filter === 'me' ? '아직 나에게 온 편지가 없어요' : filter === 'mine' ? '아직 쓴 편지가 없어요' : '아직 편지가 없어요. 첫 편지를 남겨 주세요!'}</p>`;
+        : `<p class="muted">${filter === 'me' ? L('아직 나에게 온 편지가 없어요', 'No letters for you yet') : filter === 'mine' ? L('아직 쓴 편지가 없어요', "You haven't written any letters yet") : L('아직 편지가 없어요. 첫 편지를 남겨 주세요!', 'No letters yet. Be the first to write one')}</p>`;
       listEl.querySelectorAll('.env').forEach(b => b.onclick = () => {
         buzz(8);
         const l = shown[+b.dataset.i];
-        if (isLockedLetter(l)) { toast(`⏳ 아직 열 수 없어요 · ${keyLabel(l.openAt)} (D-${daysBetween(dayKey(), l.openAt)})`, 3000); return; }
+        if (isLockedLetter(l)) { toast(L(`⏳ 아직 열 수 없어요 · ${keyLabel(l.openAt)} (D-${daysBetween(dayKey(), l.openAt)})`, `⏳ Not yet · It opens ${keyLabel(l.openAt)} (${inDays(daysBetween(dayKey(), l.openAt))})`), 3000); return; }
         b.classList.add('open');
         setTimeout(() => showLetter(shown, +b.dataset.i, back), stillMotion() ? 0 : 260);
       });
@@ -281,20 +282,20 @@ export function mailboxView(onSent, { onBack, to: presetTo = '', filter: presetF
       e.preventDefault();
       const name = guest ? root.querySelector('.l-name').value.trim() : (meM.name);
       const message = root.querySelector('.l-msg').value.trim();
-      if (!name || !message) { toast(guest ? '이름과 편지 내용을 적어 주세요' : '편지 내용을 적어 주세요'); return; }
+      if (!name || !message) { toast(guest ? L('이름과 편지 내용을 적어 주세요', 'Please write your name and a letter') : L('편지 내용을 적어 주세요', 'Please write your letter')); return; }
       const openAt = tc.checked ? (openIn.value || addDays(dayKey(), 100)) : '';
-      if (openAt && openAt <= dayKey()) { toast('열리는 날은 내일 이후로 골라 주세요'); return; }
+      if (openAt && openAt <= dayKey()) { toast(L('열리는 날은 내일 이후로 골라 주세요', 'Pick an opening day from tomorrow on')); return; }
       const label = btn.textContent;
       btn.disabled = true;
-      if (remoteOn()) btn.textContent = '보내는 중…';
+      if (remoteOn()) btn.textContent = L('보내는 중…', 'Sending…');
       const r = await add('letters', { who: guest ? 'guest' : meId(), name, to, message, openAt });
       btn.textContent = label;
       btn.disabled = false;
-      if (!root.isConnected) return;   // 보내는 사이에 창이 닫힘
+      if (!root.isConnected) return;   // the window was closed while sending
       root.querySelector('.l-msg').value = '';
       tc.checked = false; tcBox.hidden = true;
-      const whom = to === 'all' ? '가족 모두에게' : `${callName(to)}에게`;
-      sentToast(r, openAt ? `⏳ 타임캡슐을 묻었어요. ${keyLabel(openAt)}에 열려요` : `💌 ${whom} 편지를 보냈어요`);
+      const whom = to === 'all' ? L('가족 모두에게', 'the whole family') : L(`${callName(to)}에게`, callName(to));
+      sentToast(r, openAt ? L(`⏳ 타임캡슐을 묻었어요. ${keyLabel(openAt)}에 열려요`, `⏳ Time capsule buried. It opens ${keyLabel(openAt)}`) : L(`💌 ${whom} 편지를 보냈어요`, `💌 Letter sent to ${whom}`));
       confetti(['💌', '💗', '✨']);
       buzz(20);
       sound.sfx('paper');
@@ -307,37 +308,37 @@ export function mailboxView(onSent, { onBack, to: presetTo = '', filter: presetF
   };
   return { html, mount };
 }
-export function showMailbox(onSent, opts) { openView('안부 우체통', mailboxView(onSent, opts)); }
+export function showMailbox(onSent, opts) { openView(L('안부 우체통', 'Mailbox'), mailboxView(onSent, opts)); }
 
-/* ---------- 📜 편지지: 봉투를 열면 보이는 한 장 + 답장 ---------- */
+/* ---------- 📜 Letter paper: the page you see when an envelope opens + replies ---------- */
 export function letterView(list_, i, onBack) {
   const l = list_[i];
   if (isForMe(l)) markRead(l.id);
   const rx = replyView(l.id);
   const html = `
-    <article class="paper" style="--c:${esc(memberColor(l.who))}" aria-label="${esc(l.name)}의 편지">
-      <div class="paper-top"><span class="paper-stamp">${l.openAt ? '🎁' : l.mine ? '✍️' : '💌'}</span><span>To. ${l.to === 'all' ? '우리 가족' : esc(memberName(l.to))}</span></div>
-      ${l.openAt ? `<p class="muted" style="margin:0 0 6px">⏳ ${shortDate(l.time)}에 묻어 둔 타임캡슐이에요</p>` : ''}
+    <article class="paper" style="--c:${esc(memberColor(l.who))}" aria-label="${L(`${esc(postName(l.who, l.name))}의 편지`, `Letter from ${esc(postName(l.who, l.name))}`)}">
+      <div class="paper-top"><span class="paper-stamp">${l.openAt ? '🎁' : l.mine ? '✍️' : '💌'}</span><span>${L(`To. ${l.to === 'all' ? '우리 가족' : esc(memberName(l.to))}`, `To ${l.to === 'all' ? 'our family' : esc(memberName(l.to))}`)}</span></div>
+      ${l.openAt ? `<p class="muted" style="margin:0 0 6px">${L(`⏳ ${shortDate(l.time)}에 묻어 둔 타임캡슐이에요`, `⏳ A time capsule buried ${/\d/.test(shortDate(l.time)) ? `on ${shortDate(l.time)}` : shortDate(l.time).toLowerCase()}`)}</p>` : ''}
       <p class="paper-msg">${esc(l.message)}</p>
-      <div class="paper-from">From. <b>${esc(l.name || memberName(l.who))}</b><small>${shortDate(l.time)}</small></div>
+      <div class="paper-from">${L('From.', 'From')} <b>${esc(postName(l.who, l.name))}</b><small>${shortDate(l.time)}</small></div>
     </article>
     ${rx.html}
     <div class="paper-nav">
-      <button class="btn small p-prev" ${i <= 0 ? 'disabled' : ''}>‹ 이전</button>
+      <button class="btn small p-prev" ${i <= 0 ? 'disabled' : ''}>${L('‹ 이전', '‹ Previous')}</button>
       <span class="muted">${i + 1} / ${list_.length}</span>
-      <button class="btn small p-next" ${i >= list_.length - 1 ? 'disabled' : ''}>다음 ›</button>
+      <button class="btn small p-next" ${i >= list_.length - 1 ? 'disabled' : ''}>${L('다음 ›', 'Next ›')}</button>
     </div>
-    <button class="btn p-back" style="width:100%;margin-top:10px">✉️ 우체통으로</button>`;
+    <button class="btn p-back" style="width:100%;margin-top:10px">${L('✉️ 우체통으로', '✉️ Back to the mailbox')}</button>`;
   const mount = root => {
     const go = d => {
       let k = i + d;
-      while (list_[k] && isLockedLetter(list_[k])) k += d;   // 잠긴 타임캡슐은 건너뜀
+      while (list_[k] && isLockedLetter(list_[k])) k += d;   // skip locked time capsules
       if (list_[k]) { buzz(6); showLetter(list_, k, onBack); }
     };
     root.querySelector('.p-prev').onclick = () => go(-1);
     root.querySelector('.p-next').onclick = () => go(1);
     root.querySelector('.p-back').onclick = onBack;
-    // 편지지를 옆으로 밀어서 다음 편지
+    // swipe the letter sideways for the next one
     const paper = root.querySelector('.paper');
     let sx = 0, sy = 0;
     paper.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
@@ -349,38 +350,38 @@ export function letterView(list_, i, onBack) {
   };
   return { html, mount };
 }
-export function showLetter(list_, i, onBack = closeModal) { openView('💌 편지', letterView(list_, i, onBack)); }
+export function showLetter(list_, i, onBack = closeModal) { openView(L('💌 편지', '💌 Letter'), letterView(list_, i, onBack)); }
 
-/* ---------- 🗺️ 모이는 곳 ---------- */
+/* ---------- 🗺️ Meeting place ---------- */
 export function directionsView() {
   const v = W.place || {};
   const list_ = (title, arr) => (arr && arr.length ? `<div class="card"><b>${title}</b><div class="muted" style="margin-top:6px;line-height:1.7">${arr.map(esc).join('<br>')}</div></div>` : '');
   const html = `
     <div class="card center">
-      <div class="serif" style="font-size:20px;font-weight:700">${esc(v.name || '모이는 곳')}</div>
+      <div class="serif" style="font-size:20px;font-weight:700">${esc(v.name || L('모이는 곳', 'Meeting place'))}</div>
       <div style="margin-top:8px">${esc(v.address || '')}</div>
       <div class="btns" style="justify-content:center">
-        ${v.address ? `<button class="btn small" data-copy="${esc(v.address)}" data-msg="주소가 복사되었어요">📋 주소 복사</button>` : ''}
-        ${v.tel ? `<a class="btn small" href="tel:${esc(v.tel)}">📞 전화</a>` : ''}
+        ${v.address ? `<button class="btn small" data-copy="${esc(v.address)}" data-msg="${L('주소가 복사되었어요', 'Address copied')}">${L('📋 주소 복사', '📋 Copy address')}</button>` : ''}
+        ${v.tel ? `<a class="btn small" href="tel:${esc(v.tel)}">${L('📞 전화', '📞 Call')}</a>` : ''}
       </div>
     </div>
     <div class="btns">
-      ${v.naverMap ? `<a class="btn" target="_blank" rel="noopener" href="${esc(v.naverMap)}">🟢 네이버 지도</a>` : ''}
-      ${v.kakaoMap ? `<a class="btn" target="_blank" rel="noopener" href="${esc(v.kakaoMap)}">🟡 카카오맵</a>` : ''}
-      ${v.tmap ? `<a class="btn" target="_blank" rel="noopener" href="${esc(v.tmap)}">🔵 티맵</a>` : ''}
+      ${v.naverMap ? `<a class="btn" target="_blank" rel="noopener" href="${esc(v.naverMap)}">${L('🟢 네이버 지도', '🟢 Naver Map')}</a>` : ''}
+      ${v.kakaoMap ? `<a class="btn" target="_blank" rel="noopener" href="${esc(v.kakaoMap)}">${L('🟡 카카오맵', '🟡 Kakao Map')}</a>` : ''}
+      ${v.tmap ? `<a class="btn" target="_blank" rel="noopener" href="${esc(v.tmap)}">${L('🔵 티맵', '🔵 TMAP')}</a>` : ''}
     </div>
-    ${list_('🚇 지하철', v.subway)}
-    ${list_('🚌 버스', v.bus)}
-    ${list_('🚗 자가용', v.car ? [v.car] : [])}
-    ${list_('🅿️ 주차', v.parking ? [v.parking] : [])}`;
+    ${list_(L('🚇 지하철', '🚇 Subway'), v.subway)}
+    ${list_(L('🚌 버스', '🚌 Bus'), v.bus)}
+    ${list_(L('🚗 자가용', '🚗 By car'), v.car ? [v.car] : [])}
+    ${list_(L('🅿️ 주차', '🅿️ Parking'), v.parking ? [v.parking] : [])}`;
   return { html, mount: bindCopy };
 }
-export function showDirections() { openView('모이는 곳', directionsView()); }
+export function showDirections() { openView(L('모이는 곳', 'Meeting place'), directionsView()); }
 
-/* ---------- ❓ 가족 퀴즈 + 점수판 ---------- */
+/* ---------- ❓ Family quiz + scoreboard ---------- */
 function scoreboardHTML() {
   const rows = bestScores();
-  if (!rows.length) return '<p class="muted center">아직 기록이 없어요. 첫 기록의 주인공이 되어 보세요!</p>';
+  if (!rows.length) return `<p class="muted center">${L('아직 기록이 없어요. 첫 기록의 주인공이 되어 보세요!', 'No scores yet. Be the first on the board')}</p>`;
   return `<ol class="board">${rows.map((s, i) => `<li><span class="rank">${['🥇', '🥈', '🥉'][i] || i + 1}</span>${avatarHTML(member(s.who)?.look || {}, 'mini')}<b>${esc(member(s.who)?.role || s.name || memberName(s.who))}</b><span class="sc">${s.score} / ${s.total}</span></li>`).join('')}</ol>`;
 }
 export function quizView() {
@@ -392,9 +393,9 @@ export function quizView() {
       if (!alive) return;
       if (i < 0) {
         box.innerHTML = `
-          <p class="muted center" style="line-height:1.7">누가 우리 가족을 제일 잘 알까요? 🤔<br>${qs.length}문제를 풀면 점수판에 이름이 올라가요</p>
-          <div class="card"><b>🏆 점수판</b>${scoreboardHTML()}</div>
-          <button class="btn pink q-start" style="width:100%">❓ 퀴즈 시작</button>`;
+          <p class="muted center" style="line-height:1.7">${L(`누가 우리 가족을 제일 잘 알까요? 🤔<br>${qs.length}문제를 풀면 점수판에 이름이 올라가요`, `Who knows our family best? 🤔<br>Answer all ${qs.length} questions to get on the scoreboard`)}</p>
+          <div class="card"><b>${L('🏆 점수판', '🏆 Scoreboard')}</b>${scoreboardHTML()}</div>
+          <button class="btn pink q-start" style="width:100%">${L('❓ 퀴즈 시작', '❓ Start the quiz')}</button>`;
         box.querySelector('.q-start').onclick = () => { i = 0; score = 0; render(); };
         return;
       }
@@ -403,11 +404,11 @@ export function quizView() {
         box.innerHTML = `
           <div class="center" style="padding:14px 0 6px">
             <div style="font-size:60px">${perfect ? '🏆' : score >= qs.length / 2 ? '🥰' : '🌱'}</div>
-            <div class="quiz-q">${qs.length}문제 중 <b style="color:var(--rose-deep)">${score}개</b> 맞혔어요!</div>
-            <p class="muted">${perfect ? '우리 가족 박사님이시네요! 💕' : '이제 우리 가족을 조금 더 알게 됐죠? 😊'}</p>
+            <div class="quiz-q">${L(`${qs.length}문제 중 <b style="color:var(--rose-deep)">${score}개</b> 맞혔어요!`, `You got <b style="color:var(--rose-deep)">${score}</b> out of ${qs.length} right`)}</div>
+            <p class="muted">${perfect ? L('우리 가족 박사님이시네요! 💕', "You're our family expert 💕") : L('이제 우리 가족을 조금 더 알게 됐죠? 😊', 'Now you know our family a little better, right? 😊')}</p>
           </div>
-          <div class="card"><b>🏆 점수판</b><div class="q-board">${scoreboardHTML()}</div></div>
-          <button class="btn pink q-again" style="width:100%">다시 풀기</button>`;
+          <div class="card"><b>${L('🏆 점수판', '🏆 Scoreboard')}</b><div class="q-board">${scoreboardHTML()}</div></div>
+          <button class="btn pink q-again" style="width:100%">${L('다시 풀기', 'Try again')}</button>`;
         box.querySelector('.q-again').onclick = () => { i = 0; score = 0; render(); };
         if (perfect) confetti();
         if (me()) add('scores', { who: meId(), name: memberName(meId()), score, total: qs.length }).then(() => {
@@ -426,31 +427,31 @@ export function quizView() {
         box.querySelectorAll('.quiz-opt').forEach(x => (x.disabled = true));
         box.querySelectorAll('.quiz-opt')[q.answer].classList.add('right');
         if (k === q.answer) { score++; sound.sfx('ok'); } else { b.classList.add('wrong'); sound.sfx('no'); }
-        box.querySelector('.q-cmt').textContent = (k === q.answer ? '⭕ 정답! ' : '❌ 아쉬워요! ') + (q.comment || '');
+        box.querySelector('.q-cmt').textContent = (k === q.answer ? L('⭕ 정답! ', "✅ That's right. ") : L('❌ 아쉬워요! ', '❌ Not quite. ')) + (q.comment || '');
         timer = setTimeout(() => { i++; render(); }, 1700);
       });
     };
     render();
-    return () => { alive = false; clearTimeout(timer); };   // 창을 닫으면 다음 문제로 넘어가지 않음
+    return () => { alive = false; clearTimeout(timer); };   // closing the window stops it moving on to the next question
   };
   return { html: '<div class="quiz-box"></div>', mount };
 }
-export function showQuiz() { openView('가족 퀴즈', quizView()); }
+export function showQuiz() { openView(L('가족 퀴즈', 'Family quiz'), quizView()); }
 
 export async function share() {
-  const data = { title: villageName(), text: '우리 가족 마을에 놀러 와요 🏡', url: location.href.split('#')[0] };
+  const data = { title: villageName(), text: L('우리 가족 마을에 놀러 와요 🏡', 'Come and visit our family village 🏡'), url: location.href.split('#')[0] };
   if (navigator.share) {
     try { await navigator.share(data); return; }
     catch (err) { if (err?.name === 'AbortError') return; }
   }
-  copy(data.url, '주소가 복사되었어요');
+  copy(data.url, L('주소가 복사되었어요', 'Link copied'));
 }
 
-/* ---------- 📱 앱으로 설치 (홈 화면에 추가) ----------
-   안드로이드 크롬: 설치 창을 바로 띄움 · 아이폰/카카오톡 안 브라우저: 방법을 알려 줌 */
+/* ---------- 📱 Install as an app (add to the home screen) ----------
+   Android Chrome: shows the install prompt right away · iPhone / in-app browsers such as KakaoTalk: explains how */
 let installEvt = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
-addEventListener('appinstalled', () => { installEvt = null; toast('📱 홈 화면에 가족 마을이 생겼어요!', 3200); });
+addEventListener('appinstalled', () => { installEvt = null; toast(L('📱 홈 화면에 가족 마을이 생겼어요!', '📱 The family village is now on your home screen'), 3200); });
 export const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 export async function installApp() {
   if (installEvt) {
@@ -461,24 +462,27 @@ export async function installApp() {
   const ua = navigator.userAgent;
   const inApp = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const steps = inApp
-    ? ['오른쪽 아래(또는 위) <b>⋮ · 공유</b> 버튼', `<b>${ios ? 'Safari로 열기' : '다른 브라우저로 열기'}</b>`, ios ? '열린 Safari에서 아래 순서대로' : '열린 크롬에서 아래 순서대로']
+    ? L(['오른쪽 아래(또는 위) <b>⋮ · 공유</b> 버튼', `<b>${ios ? 'Safari로 열기' : '다른 브라우저로 열기'}</b>`, ios ? '열린 Safari에서 아래 순서대로' : '열린 크롬에서 아래 순서대로'],
+      ['The <b>⋮ · Share</b> button at the bottom (or top) right', `<b>${ios ? 'Open in Safari' : 'Open in another browser'}</b>`, ios ? 'Then follow the steps below in Safari' : 'Then follow the steps below in Chrome'])
     : [];
   const how = ios
-    ? ['화면 아래 <b>공유 버튼</b> <span class="kbd">⬆︎</span> 누르기', '<b>홈 화면에 추가</b> 고르기', '오른쪽 위 <b>추가</b>']
-    : ['오른쪽 위 <b>⋮</b> 메뉴 누르기', '<b>앱 설치</b> 또는 <b>홈 화면에 추가</b>', '<b>설치</b> 누르기'];
-  openModal('📱 앱으로 설치', `
-    <div class="card center"><div style="font-size:44px">🏡</div><b>홈 화면에 가족 마을 아이콘을 만들어요</b>
-      <p class="muted" style="margin:6px 0 0">다음부터는 아이콘만 누르면 바로 열려요. 인터넷이 잠깐 끊겨도 열리고, 쓴 글은 연결되면 보내져요</p></div>
-    ${steps.length ? `<div class="card"><b>먼저, 지금 앱 안의 브라우저라면</b><ol class="howto">${steps.map(s => `<li>${s}</li>`).join('')}</ol></div>` : ''}
-    <div class="card"><b>${ios ? '아이폰 (Safari)' : '안드로이드 (크롬·삼성 인터넷)'}</b><ol class="howto">${how.map(s => `<li>${s}</li>`).join('')}</ol></div>`);
+    ? L(['화면 아래 <b>공유 버튼</b> <span class="kbd">⬆︎</span> 누르기', '<b>홈 화면에 추가</b> 고르기', '오른쪽 위 <b>추가</b>'],
+      ['Tap the <b>Share button</b> <span class="kbd">⬆︎</span> at the bottom of the screen', 'Choose <b>Add to Home Screen</b>', 'Tap <b>Add</b> at the top right'])
+    : L(['오른쪽 위 <b>⋮</b> 메뉴 누르기', '<b>앱 설치</b> 또는 <b>홈 화면에 추가</b>', '<b>설치</b> 누르기'],
+      ['Tap the <b>⋮</b> menu at the top right', '<b>Install app</b> or <b>Add to Home screen</b>', 'Tap <b>Install</b>']);
+  openModal(L('📱 앱으로 설치', '📱 Install as an app'), `
+    <div class="card center"><div style="font-size:44px">🏡</div><b>${L('홈 화면에 가족 마을 아이콘을 만들어요', 'Put a family village icon on your home screen')}</b>
+      <p class="muted" style="margin:6px 0 0">${L('다음부터는 아이콘만 누르면 바로 열려요. 인터넷이 잠깐 끊겨도 열리고, 쓴 글은 연결되면 보내져요', "Next time, just tap the icon. It opens even if the internet drops for a moment, and what you write is sent once you're connected")}</p></div>
+    ${steps.length ? `<div class="card"><b>${L('먼저, 지금 앱 안의 브라우저라면', "First, if you're in an app's built-in browser")}</b><ol class="howto">${steps.map(s => `<li>${s}</li>`).join('')}</ol></div>` : ''}
+    <div class="card"><b>${ios ? L('아이폰 (Safari)', 'iPhone (Safari)') : L('안드로이드 (크롬·삼성 인터넷)', 'Android (Chrome · Samsung Internet)')}</b><ol class="howto">${how.map(s => `<li>${s}</li>`).join('')}</ol></div>`);
 }
 
-/* ---------- ☰ 바로가기 메뉴 ---------- */
-const MENU_GROUPS = [['', '🌳 마을 곳곳'], ['me', '🙋 나'], ['set', '⚙️ 보기 · 설정']];
+/* ---------- ☰ Shortcut menu ---------- */
+const MENU_GROUPS = L([['', '🌳 마을 곳곳'], ['me', '🙋 나'], ['set', '⚙️ 보기 · 설정']], [['', '🌳 Around the village'], ['me', '🙋 Me'], ['set', '⚙️ View · settings']]);
 export function menuView(items) {
-  const btn = (it, small) => `<button class="menu-item${small ? ' small' : ''}" data-i="${items.indexOf(it)}"><span class="e">${it.emoji}</span>${esc(it.label)}</button>`;
+  const btn = (it, small) => `<button class="menu-item${small ? ' small' : ''}" data-i="${items.indexOf(it)}"${it.lang ? ` lang="${it.lang}"` : ''}><span class="e">${it.emoji}</span>${esc(it.label)}</button>`;
   const html = `
-    <p class="muted">원하는 곳을 누르면 바로 볼 수 있어요</p>
+    <p class="muted">${L('원하는 곳을 누르면 바로 볼 수 있어요', 'Tap a place to go straight there')}</p>
     ${MENU_GROUPS.map(([g, title]) => {
       const list = items.filter(it => (it.g || '') === g);
       if (!list.length) return '';
@@ -487,14 +491,14 @@ export function menuView(items) {
   const mount = root => { root.querySelectorAll('.menu-item').forEach(b => b.onclick = () => { buzz(8); items[+b.dataset.i].go(); }); };
   return { html, mount };
 }
-export function showMenu(items) { openView('바로가기', menuView(items)); }
+export function showMenu(items) { openView(L('바로가기', 'Shortcuts'), menuView(items)); }
 
-/* ---------- 📚 앨범 (2D 그리드) ---------- */
+/* ---------- 📚 Album (2D grid) ---------- */
 export function albumView(themes, only = -1) {
   const list = only >= 0 ? [themes[only]] : themes;
   const html = list.map(t => `
     <div class="album-theme">
-      <h3>${t.emoji} ${esc(t.title)} <span class="muted" style="font-size:13px">${t.photos.length}장</span></h3>
+      <h3>${t.emoji} ${esc(t.title)} <span class="muted" style="font-size:13px">${L(`${t.photos.length}장`, `${t.photos.length} ${t.photos.length === 1 ? 'photo' : 'photos'}`)}</span></h3>
       <div class="muted" style="font-size:13px">${esc(t.subtitle || '')}</div>
       <div class="album-grid">
         ${t.photos.map((p, i) => `<button type="button" data-t="${themes.indexOf(t)}" data-i="${i}" aria-label="${esc(p.caption || t.title + ' ' + (i + 1))}"><img loading="lazy" src="${esc(photoURL(p, 'thumb'))}" alt="" /></button>`).join('')}
@@ -513,10 +517,10 @@ export function albumView(themes, only = -1) {
   };
   return { html, mount };
 }
-export function showAlbum(themes, only = -1) { openView(only >= 0 ? `${themes[only].title} 앨범` : '전체 앨범', albumView(themes, only)); }
+export function showAlbum(themes, only = -1) { openView(only >= 0 ? L(`${themes[only].title} 앨범`, `${themes[only].title} album`) : L('전체 앨범', 'Full album'), albumView(themes, only)); }
 
-/* ---------- 🔍 사진 크게 보기 ----------
-   두 번 탭 / 두 손가락으로 확대, 옆으로 밀어 넘기기, 아래로 내려 닫기 */
+/* ---------- 🔍 Large photo view ----------
+   Double-tap / two fingers to zoom, swipe sideways for the next one, swipe down to close */
 let lb = { themes: null, ti: 0, i: 0 };
 const Z = { s: 1, x: 0, y: 0 };
 const lbBox = () => $('#lightbox');
@@ -568,7 +572,7 @@ function bindLightboxGestures() {
   const box = lbBox();
   const pts = new Map();
   let g = null, lastTap = 0;
-  // 확대 전 사진 중심 (화면 좌표)
+  // photo centre before zoom (screen coordinates)
   const center = () => {
     const r = lbImg().getBoundingClientRect();
     return { x: r.left + r.width / 2 - Z.x, y: r.top + r.height / 2 - Z.y };
@@ -624,7 +628,7 @@ function bindLightboxGestures() {
     g = null;
     if (e.type === 'pointercancel') { if (Z.s > 1) { clampZ(); applyZ(true); } else resetZ(true); return; }
     if (!moved) {
-      // 두 번 탭 → 확대 / 원래대로
+      // double-tap → zoom in / back to normal
       const now = performance.now();
       if (now - lastTap < 320) {
         lastTap = 0;
@@ -646,7 +650,7 @@ function bindLightboxGestures() {
   box.addEventListener('pointercancel', up);
 }
 
-/* ---------- 팝업 윗부분을 아래로 끌어서 닫기 ---------- */
+/* ---------- Drag the top of the popup down to close it ---------- */
 function bindSheetDrag() {
   const sheet = $('#modal .sheet'), top = $('#modal .sheet-top');
   let d = null;
@@ -672,13 +676,13 @@ function bindSheetDrag() {
   top.addEventListener('pointercancel', end);
 }
 
-/* 가+ : 글자 크게 (팝업·글로 보기 공통, 기억해 둠) */
+/* A+ : larger text (popups and the text view; remembered) */
 const FS_KEY = 'family-bigfont';
 export const isBigFont = () => document.documentElement.classList.contains('big');
 export function setBigFont(on) {
   document.documentElement.classList.toggle('big', on);
   try { localStorage.setItem(FS_KEY, on ? '1' : '0'); } catch {}
-  document.querySelectorAll('.fs-toggle').forEach(b => { b.textContent = on ? '가-' : '가+'; b.setAttribute('aria-label', on ? '글자 작게' : '글자 크게'); });
+  document.querySelectorAll('.fs-toggle').forEach(b => { b.textContent = on ? L('가-', 'A-') : L('가+', 'A+'); b.setAttribute('aria-label', on ? L('글자 작게', 'Smaller text') : L('글자 크게', 'Larger text')); });
 }
 
 export function initUI() {
@@ -692,7 +696,7 @@ export function initUI() {
   box.querySelector('.next').onclick = () => stepLB(1);
   bindLightboxGestures();
   bindSheetDrag();
-  // PC 키보드
+  // PC keyboard
   addEventListener('keydown', e => {
     if (box.classList.contains('open')) {
       if (e.key === 'ArrowRight') stepLB(1);

@@ -1,14 +1,14 @@
 /* =========================================================
-   🎵 파일 없는 소리
-   mp3 없이 WebAudio로 오르골 배경음과 작은 효과음을 합성합니다.
-   - 기본은 꺼짐. 오른쪽 위 🔇 버튼(또는 메뉴)으로 켜면 기억해 둡니다
-   - 저작권 걱정 없이 단일 HTML 안에서 완결됩니다
+   🎵 Sound without files
+   Synthesises a music-box background tune and small sound effects with WebAudio, no mp3 needed.
+   - Off by default. Turning it on with the top-right 🔇 button (or the menu) is remembered
+   - No copyright worries, and it all fits inside a single HTML file
    ========================================================= */
 const KEY = 'family-sound';
 let ctx = null, master = null, bgm = null, noiseBuf = null;
 let enabled = false, timer = null, nextT = 0, step = 0;
 
-/* 마림바 가락 (F 펜타토닉, 3박자 흔들림, 한 칸 = 8분음표) — 직접 만든 가락 */
+/* Marimba tune (F pentatonic, swaying in 3, one step = an eighth note) — an original tune */
 const F4 = 349.23, G4 = 392, A4 = 440, C5 = 523.25, D5 = 587.33, F5 = 698.46, G5 = 783.99;
 const MELODY = [
   C5, 0, A4, G4, F4, 0, G4, A4, C5, 0, D5, 0,
@@ -16,7 +16,7 @@ const MELODY = [
   D5, 0, C5, A4, C5, 0, F5, 0, D5, C5, A4, 0,
   G4, A4, C5, 0, A4, G4, F4, 0, 0, 0, 0, 0,
 ];
-const BASS = [87.31, 116.54, 87.31, 130.81]; // F2 Bb2 F2 C3 (한 마디마다)
+const BASS = [87.31, 116.54, 87.31, 130.81]; // F2 Bb2 F2 C3 (one per bar)
 const STEP = 0.34;
 
 function ensure() {
@@ -51,13 +51,13 @@ function noise(t, dur, { gain = 0.2, type = 'lowpass', freq = 2000 } = {}) {
   s.start(t); s.stop(t + dur + 0.02);
 }
 
-/* 배경음: 조금 앞서서 예약해 두는 방식 (탭이 뒤로 가면 멈춤) */
+/* Background tune: notes are scheduled a little ahead (stops when the tab goes to the background) */
 function schedule() {
   if (!ctx || !enabled) return;
   while (nextT < ctx.currentTime + 0.4) {
     const n = MELODY[step % MELODY.length];
     if (n) {
-      tone(n, nextT, 0.7, { type: 'sine', gain: 0.5, dest: bgm });          // 나무 건반처럼 짧게
+      tone(n, nextT, 0.7, { type: 'sine', gain: 0.5, dest: bgm });          // short, like wooden keys
       tone(n * 4, nextT, 0.12, { type: 'sine', gain: 0.06, dest: bgm });
     }
     if (step % 6 === 0) tone(BASS[Math.floor(step / 12) % BASS.length], nextT, 1.6, { type: 'triangle', gain: 0.16, dest: bgm });
@@ -68,7 +68,7 @@ function schedule() {
 export const sound = {
   get enabled() { return enabled; },
   saved() { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } },
-  /* 사용자가 눌렀을 때(제스처 안)만 켜져요 — 휴대폰 자동재생 규칙 */
+  /* Turns on only when the user taps (inside a gesture), because of phone autoplay rules */
   setEnabled(on) {
     if (on && !ensure()) return false;
     enabled = on;
@@ -98,14 +98,14 @@ export const sound = {
       case 'pop': tone(600, t, 0.08, { type: 'triangle', gain: 0.1, slide: 900 }); break;
       case 'tada': [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, t + i * 0.09, 0.4, { gain: 0.12 })); break;
       case 'water': [1318.5, 1568, 1760].forEach((f, i) => tone(f, t + i * 0.07, 0.18, { gain: 0.06, slide: f * 0.8 })); noise(t, 0.35, { gain: 0.05, type: 'bandpass', freq: 2600 }); break;
-      case 'birthday': {   // 짧은 축하 팡파르 (직접 만든 가락)
+      case 'birthday': {   // a short birthday fanfare (an original tune)
         const n = [[523.25, 0, 0.18], [659.25, 0.16, 0.18], [783.99, 0.32, 0.18], [1046.5, 0.5, 0.45], [880, 0.95, 0.18], [987.77, 1.12, 0.18], [1046.5, 1.3, 0.6]];
         n.forEach(([f, d, l]) => { tone(f, t + d, l + 0.2, { gain: 0.11 }); tone(f / 2, t + d, l + 0.2, { type: 'triangle', gain: 0.05 }); });
         break;
       }
     }
   },
-  /* 팝업이 열리면 배경음을 살짝 줄임 */
+  /* Lower the background tune a little while a popup is open */
   duck(on) { if (bgm && ctx) bgm.gain.setTargetAtTime(on ? 0.04 : 0.12, ctx.currentTime, 0.12); },
 };
 
